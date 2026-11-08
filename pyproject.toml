@@ -1,0 +1,26 @@
+[project] # Declares the package's standard project metadata.
+name = "graph-cli" # Distribution name users give to pip when installing the package.
+version = "0.1.0" # Current release version, following the usual MAJOR.MINOR.PATCH format.
+description = "A local CLI for managing JSON-backed graphs with customizable entity and edge types." # Short description shown by package indexes.
+readme = "README.md" # Uses this file as the long package description.
+requires-python = ">=3.10" # Required for dataclass slots and PEP 604 union type syntax.
+
+[project.optional-dependencies] # Declares dependencies users may install for optional tasks.
+test = ["pytest>=9.2.0"] # Defines the test extra, installable with pip install ".[test]"; not required by the CLI.
+
+[project.scripts] # Defines executable commands installed into the user's environment.
+graph = "graph_cli:main" # Creates the "graph" command that calls main() in graph_cli.py.
+
+[build-system] # Tells pip which build tool to use to create the installable package.
+requires = ["setuptools>=68"] # Installs setuptools 68 or newer in the isolated build environment.
+build-backend = "setuptools.build_meta" # Selects setuptools' PEP 517 build implementation.
+
+[tool.setuptools] # Starts configuration specific to the setuptools build tool.
+py-modules = ["graph_cli"] # Includes the top-level graph_cli.py module in the distribution.
+
+[tool.setuptools.packages.find] # Configures setuptools to discover importable Python packages.
+include = ["cli*", "commands*", "graphs*", "schemas*"] # Includes these package trees and their subpackages.
+
+[tool.setuptools.package-data] # Includes non-Python resource files inside the packages.
+commands = ["visualization-templates/*.html"] # Packages the HTML visualization template used by the CLI.
+schemas = ["*.json"] # Packages the JSON schemas copied by the graph init command.

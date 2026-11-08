@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Graph entity contract",
+  "description": "Entity type definitions used by graph-cli.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri-reference"
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/entityDefinition"
+  },
+  "$defs": {
+    "entityDefinition": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "properties": {
+          "$ref": "#/$defs/propertyDefinitions"
+        }
+      },
+      "required": [
+        "properties",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "propertyDefinitions": {
+      "type": "object",
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/propertyDefinition"
+      }
+    },
+    "propertyDefinition": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "string",
+            "number",
+            "integer",
+            "boolean"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "string",
+                "number",
+                "integer",
+                "boolean"
+              ]
+            },
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

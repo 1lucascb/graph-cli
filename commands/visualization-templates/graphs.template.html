@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Graph view</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #f5f6f8;
+            --panel: #ffffff;
+            --border: #e1e4ea;
+            --text: #1a202c;
+            --muted: #697386;
+            --edge: #a2acbd;
+            --accent: #2f6bed;
+            --chip: #edf0f5;
+            --warn: #a85f00
+        }
+
+        @media (prefers-color-scheme:dark) {
+            :root {
+                --bg: #0e131f;
+                --panel: #151b2a;
+                --border: #242c41;
+                --text: #e4e8f1;
+                --muted: #8a95ab;
+                --edge: #4a5772;
+                --accent: #6c95ff;
+                --chip: #1d2539;
+                --warn: #f0b04a
+            }
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg);
+            color: var(--text);
+            font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif
+        }
+
+        button {
+            font: inherit;
+            color: inherit
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            height: 52px;
+            padding: 0 16px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            flex: none
+        }
+
+        header h1 {
+            font-size: 15px;
+            font-weight: 650;
+            margin: 0
+        }
+
+        #summary {
+            color: var(--muted)
+        }
+
+        #warn {
+            color: var(--warn)
+        }
+
+        #search {
+            margin-left: auto;
+            width: 260px;
+            padding: 7px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg);
+            color: var(--text);
+            font: inherit
+        }
+
+        #search:focus-visible,
+        button:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 1px
+        }
+
+        #matches {
+            color: var(--muted);
+            min-width: 70px
+        }
+
+        .app {
+            flex: 1;
+            display: flex;
+            min-height: 0
+        }
+
+        .filters {
+            width: 220px;
+            flex: none;
+            overflow: auto;
+            padding: 12px 8px;
+            background: var(--panel);
+            border-right: 1px solid var(--border)
+        }
+
+        .filters h2 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            margin: 6px 8px 4px
+        }
+
+        .filters h2:not(:first-child) {
+            margin-top: 18px
+        }
+
+        .chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 5px 8px;
+            border: 0;
+            border-radius: 6px;
+            background: none;
+            cursor: pointer;
+            text-align: left
+        }
+
+        .chip:hover {
+            background: var(--chip)
+        }
+
+        .chip.off {
+            opacity: .4
+        }
+
+        .chip .count {
+            margin-left: auto;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex: none
+        }
+
+        .dot.big {
+            width: 14px;
+            height: 14px;
+            margin-top: 4px
+        }
+
+        #stage {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+            overflow: hidden
+        }
+
+        canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            touch-action: none
+        }
+
+        .tools {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: flex;
+            gap: 6px
+        }
+
+        .tools button {
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--panel);
+            cursor: pointer
+        }
+
+        .tools button:hover {
+            border-color: var(--accent)
+        }
+
+        .hint {
+            position: absolute;
+            left: 12px;
+            bottom: 10px;
+            color: var(--muted);
+            pointer-events: none
+        }
+
+        #empty {
+            position: absolute;
+            inset: 0;
+            display: none;
+            place-items: center;
+            color: var(--muted);
+            font-size: 15px;
+            pointer-events: none
+        }
+
+        .details {
+            width: 340px;
+            flex: none;
+            overflow: auto;
+            padding: 16px;
+            background: var(--panel);
+            border-left: 1px solid var(--border)
+        }
+
+        .details .head {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start
+        }
+
+        .details h2 {
+            font-size: 17px;
+            line-height: 1.25;
+            margin: 0 0 4px;
+            overflow-wrap: anywhere
+        }
+
+        .details h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            margin: 20px 0 6px
+        }
+
+        .sub {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center
+        }
+
+        code {
+            font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+            overflow-wrap: anywhere
+        }
+
+        .badge {
+            padding: 1px 8px;
+            border-radius: 10px;
+            background: var(--chip)
+        }
+
+        .muted {
+            color: var(--muted)
+        }
+
+        .details p {
+            margin: 8px 0 0
+        }
+
+        .kv {
+            display: grid;
+            grid-template-columns: minmax(70px, auto) 1fr;
+            gap: 4px 12px;
+            margin: 0
+        }
+
+        .kv dt {
+            color: var(--muted);
+            overflow-wrap: anywhere
+        }
+
+        .kv dd {
+            margin: 0;
+            overflow-wrap: anywhere
+        }
+
+        pre {
+            margin: 0 0 8px;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg);
+            font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 18px auto 1fr;
+            gap: 1px 6px;
+            align-items: baseline;
+            padding: 3px 0
+        }
+
+        .row .desc {
+            grid-column: 2/-1;
+            color: var(--muted)
+        }
+
+        .link {
+            padding: 0;
+            border: 0;
+            background: none;
+            color: var(--accent);
+            cursor: pointer;
+            text-align: left
+        }
+
+        .link:hover {
+            text-decoration: underline
+        }
+
+        .route {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 6px
+        }
+
+        @media (max-width:900px) {
+            .filters {
+                display: none
+            }
+
+            .details {
+                width: 280px
+            }
+
+            #search {
+                width: 160px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Graph</h1>
+        <span id="summary"></span>
+        <span id="warn"></span>
+        <span id="matches"></span>
+        <input id="search" type="search" placeholder="Search id, name, type or property  ( / )"
+            aria-label="Search nodes">
+    </header>
+    <div class="app">
+        <aside class="filters" id="filters"></aside>
+        <main id="stage">
+            <canvas id="canvas"></canvas>
+            <div id="empty">No nodes yet. Add one with <code>&nbsp;graph add-node&nbsp;</code></div>
+            <div class="tools"><button type="button" id="fit">Fit</button><button type="button"
+                    id="relayout">Re-layout</button></div>
+            <div class="hint">Drag nodes to pin them, double-click to unpin. Scroll to zoom.</div>
+        </main>
+        <aside class="details" id="details" aria-live="polite"></aside>
+    </div>
+    <script type="application/json" id="graph-data">__GRAPH_DATA__</script>
+    <script>
+        (() => {
+            'use strict';
+            const raw = JSON.parse(document.getElementById('graph-data').textContent);
+            const types = raw.types || { entities: {}, edges: {} };
+            const $ = id => document.getElementById(id);
+            // All DOM is built with textContent, never innerHTML: graph data is written by agents and must not be trusted.
+            const el = (tag, cls, text) => {
+                const e = document.createElement(tag);
+                if (cls) e.className = cls;
+                if (text !== undefined && text !== null) e.textContent = text;
+                return e;
+            };
+            const fmt = v => typeof v === 'string' ? v : JSON.stringify(v);
+
+            /* ---------- model ---------- */
+            const PALETTE = ['#4f7cff', '#22b07d', '#f0a020', '#e5586e', '#9b6bff', '#18b3c4', '#e8793a', '#8bb92f', '#d153b8', '#6c7a92'];
+            const nodeTypes = [...new Set(raw.nodes.map(n => n.type))].sort();
+            const colorOf = t => PALETTE[nodeTypes.indexOf(t) % PALETTE.length];
+
+            const nodes = raw.nodes.map((n, i) => {
+                const a = i * 2.4, r = 22 * Math.sqrt(i + 1);
+                return {
+                    ...n, idx: i, x: Math.cos(a) * r, y: Math.sin(a) * r, r: 12, deg: 0, edges: [], hidden: false, pinned: false,
+                    vx: 0, vy: 0, hay: [n.id, n.name, n.type, ...Object.values(n.properties || {}).map(String)].join('\n').toLowerCase()
+                };
+            });
+            const byId = new Map(nodes.map(n => [n.id, n]));
+            const edges = [];
+            let skipped = 0;
+            for (const e of raw.edges) {
+                const s = byId.get(e.source), t = byId.get(e.target);
+                if (!s || !t) { skipped++; continue; }
+                const edge = { ...e, s, t, hidden: false, pts: null };
+                edges.push(edge);
+                s.deg++; t.deg++;
+                s.edges.push(edge);
+                if (t !== s) t.edges.push(edge);
+            }
+            nodes.forEach(n => { n.r = 12 + Math.min(10, Math.sqrt(n.deg) * 2.5); });
+            const edgeTypes = [...new Set(edges.map(e => e.type))].sort();
+
+            // Parallel edges: group by unordered pair so each one gets its own curve.
+            const groups = new Map();
+            for (const e of edges) {
+                const lo = e.s.idx < e.t.idx;
+                e.a = lo ? e.s : e.t; e.b = lo ? e.t : e.s;
+                const key = e.a.idx + '|' + e.b.idx;
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(e);
+            }
+            const links = [];
+            for (const g of groups.values()) {
+                g.forEach((e, i) => { e.slot = i - (g.length - 1) / 2; e.size = g.length; e.group = g; });
+                if (g[0].a !== g[0].b) links.push({ a: g[0].a, b: g[0].b, len: 110 + (g.length - 1) * 25 });
+            }
+
+            /* ---------- state ---------- */
+            const view = { x: 0, y: 0, k: 1 };
+            const hiddenNodeTypes = new Set(), hiddenEdgeTypes = new Set();
+            let selected = null, hover = null, matches = null, alpha = 1, running = false, raf = 0, dpr = 1;
+            const stage = $('stage'), canvas = $('canvas'), ctx = canvas.getContext('2d');
+            let C = {};
+            function readTheme() {
+                const s = getComputedStyle(document.documentElement), g = n => s.getPropertyValue(n).trim();
+                C = { bg: g('--bg'), panel: g('--panel'), text: g('--text'), muted: g('--muted'), edge: g('--edge'), accent: g('--accent') };
+            }
+
+            /* ---------- layout (small force simulation, no dependencies) ---------- */
+            function tick() {
+                const vis = nodes.filter(n => !n.hidden), m = vis.length;
+                for (let i = 0; i < m; i++) {
+                    const a = vis[i];
+                    for (let j = i + 1; j < m; j++) {
+                        const b = vis[j];
+                        let dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
+                        if (d2 > 160000) continue;
+                        if (d2 < 1) { dx = Math.random() - .5; dy = Math.random() - .5; d2 = 1; }
+                        const d = Math.sqrt(d2), f = 900 * alpha / d, fx = dx / d * f, fy = dy / d * f;
+                        a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
+                    }
+                }
+                for (const l of links) {
+                    if (l.a.hidden || l.b.hidden) continue;
+                    const dx = l.b.x - l.a.x, dy = l.b.y - l.a.y, d = Math.hypot(dx, dy) || 1, f = (d - l.len) * .1 * alpha;
+                    const fx = dx / d * f, fy = dy / d * f;
+                    l.a.vx += fx; l.a.vy += fy; l.b.vx -= fx; l.b.vy -= fy;
+                }
+                for (const n of vis) {
+                    if (n.pinned) { n.vx = n.vy = 0; continue; }
+                    n.vx -= n.x * .004 * alpha; n.vy -= n.y * .004 * alpha;
+                    n.vx *= .6; n.vy *= .6;
+                    n.x += n.vx; n.y += n.vy;
+                }
+            }
+            function loop() {
+                if (!running) return;
+                tick();
+                alpha *= .985;
+                if (alpha < .02) running = false;
+                draw();
+                if (running) requestAnimationFrame(loop);
+            }
+            function wake(a) {
+                alpha = Math.max(alpha, a);
+                if (!running) { running = true; requestAnimationFrame(loop); }
+            }
+            function requestDraw() { if (!raf) raf = requestAnimationFrame(draw); }
+
+            /* ---------- geometry ---------- */
+            function curve(e) {
+                const s = e.s, t = e.t, N = 22, pts = [];
+                if (s === t) {
+                    const L = 32 + (e.slot + (e.size - 1) / 2) * 16;
+                    for (let k = 0; k <= N; k++) {
+                        const u = k / N, v = 1 - u;
+                        pts.push([
+                            v * v * v * s.x + 3 * v * v * u * (s.x - L) + 3 * v * u * u * (s.x + L) + u * u * u * s.x,
+                            v * v * v * s.y + 3 * v * v * u * (s.y - L * 1.8) + 3 * v * u * u * (s.y - L * 1.8) + u * u * u * s.y]);
+                    }
+                    return pts;
+                }
+                if (e.slot === 0) return [[s.x, s.y], [t.x, t.y]];
+                const dx = e.b.x - e.a.x, dy = e.b.y - e.a.y, len = Math.hypot(dx, dy) || 1, off = e.slot * 56;
+                const cx = (s.x + t.x) / 2 - dy / len * off, cy = (s.y + t.y) / 2 + dx / len * off;
+                for (let k = 0; k <= N; k++) {
+                    const u = k / N, v = 1 - u;
+                    pts.push([v * v * s.x + 2 * v * u * cx + u * u * t.x, v * v * s.y + 2 * v * u * cy + u * u * t.y]);
+                }
+                return pts;
+            }
+            function arrowTip(pts, t) {
+                const R = t.r + 3;
+                for (let i = pts.length - 1; i > 0; i--) {
+                    const p0 = pts[i - 1], p1 = pts[i], d0 = Math.hypot(p0[0] - t.x, p0[1] - t.y);
+                    if (d0 < R) continue;
+                    const d1 = Math.hypot(p1[0] - t.x, p1[1] - t.y), f = d1 < R ? (d0 - R) / (d0 - d1) : 1;
+                    const ux = p1[0] - p0[0], uy = p1[1] - p0[1], ul = Math.hypot(ux, uy) || 1;
+                    return { x: p0[0] + ux * f, y: p0[1] + uy * f, ux: ux / ul, uy: uy / ul };
+                }
+                return null;
+            }
+            const toWorld = p => ({ x: (p.x - view.x) / view.k, y: (p.y - view.y) / view.k });
+            function segDist(px, py, a, b) {
+                const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+                const u = l2 ? Math.max(0, Math.min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / l2)) : 0;
+                return Math.hypot(px - a[0] - u * dx, py - a[1] - u * dy);
+            }
+            function pick(p) {
+                const w = toWorld(p), tol = 6 / view.k;
+                for (let i = nodes.length - 1; i >= 0; i--) {
+                    const n = nodes[i];
+                    if (!n.hidden && Math.hypot(w.x - n.x, w.y - n.y) <= n.r + 2 / view.k) return { kind: 'node', ref: n };
+                }
+                for (const e of edges) {
+                    if (e.hidden || !e.pts) continue;
+                    for (let i = 1; i < e.pts.length; i++) if (segDist(w.x, w.y, e.pts[i - 1], e.pts[i]) <= tol) return { kind: 'edge', ref: e };
+                }
+                return null;
+            }
+
+            /* ---------- drawing ---------- */
+            function halo(text, x, y, size, fill, align) {
+                ctx.font = size + 'px system-ui, sans-serif';
+                ctx.textAlign = align || 'center';
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = 3 / view.k;
+                ctx.strokeStyle = C.bg;
+                ctx.strokeText(text, x, y);
+                ctx.fillStyle = fill;
+                ctx.fillText(text, x, y);
+            }
+            function draw() {
+                raf = 0;
+                const W = stage.clientWidth, H = stage.clientHeight, inv = 1 / view.k;
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.clearRect(0, 0, W, H);
+                ctx.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.x, dpr * view.y);
+
+                const focus = hover || selected;
+                let litN = null, litE = null;
+                if (focus) {
+                    litN = new Set(); litE = new Set();
+                    if (focus.kind === 'node') {
+                        litN.add(focus.ref);
+                        for (const e of focus.ref.edges) if (!e.hidden) { litE.add(e); litN.add(e.s); litN.add(e.t); }
+                    } else { litE.add(focus.ref); litN.add(focus.ref.s); litN.add(focus.ref.t); }
+                } else if (matches) {
+                    litN = matches; litE = new Set(edges.filter(e => matches.has(e.s) && matches.has(e.t)));
+                }
+                const selEdge = selected && selected.kind === 'edge' ? selected.ref : null;
+
+                ctx.lineCap = 'round';
+                for (const e of edges) {
+                    if (e.hidden) continue;
+                    e.pts = curve(e);
+                    const on = !litE || litE.has(e), hot = !!focus && on;
+                    ctx.globalAlpha = on ? 1 : .08;
+                    ctx.strokeStyle = hot ? C.accent : C.edge;
+                    ctx.lineWidth = (e === selEdge ? 2.6 : hot ? 1.8 : 1.3) * inv;
+                    ctx.beginPath();
+                    e.pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+                    ctx.stroke();
+                    const tip = arrowTip(e.pts, e.t);
+                    if (tip) {
+                        const L = 9 * inv, W2 = 4.2 * inv;
+                        ctx.fillStyle = ctx.strokeStyle;
+                        ctx.beginPath();
+                        ctx.moveTo(tip.x, tip.y);
+                        ctx.lineTo(tip.x - tip.ux * L - tip.uy * W2, tip.y - tip.uy * L + tip.ux * W2);
+                        ctx.lineTo(tip.x - tip.ux * L + tip.uy * W2, tip.y - tip.uy * L - tip.ux * W2);
+                        ctx.fill();
+                    }
+                    if (view.k >= .6 || hot) {
+                        const mid = e.pts.length === 2 ? [(e.pts[0][0] + e.pts[1][0]) / 2, (e.pts[0][1] + e.pts[1][1]) / 2] : e.pts[e.pts.length >> 1];
+                        halo(e.type, mid[0], mid[1] - 4 * inv, 10.5 * inv, hot ? C.accent : C.muted);
+                    }
+                }
+                for (const n of nodes) {
+                    if (n.hidden) continue;
+                    const on = !litN || litN.has(n), sel = selected && selected.ref === n;
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = C.bg;
+                    ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fill();   // opaque base so dimmed nodes hide edges beneath
+                    ctx.globalAlpha = on ? 1 : .2;
+                    ctx.fillStyle = colorOf(n.type);
+                    ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fill();
+                    ctx.lineWidth = 2 * inv; ctx.strokeStyle = C.panel; ctx.stroke();
+                    if (n.pinned) { ctx.fillStyle = C.panel; ctx.beginPath(); ctx.arc(n.x, n.y, 3 * inv, 0, 7); ctx.fill(); }
+                    if (sel) { ctx.lineWidth = 2.5 * inv; ctx.strokeStyle = C.accent; ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 4 * inv, 0, 7); ctx.stroke(); }
+                    if (view.k >= .45 || (on && litN)) {
+                        const name = String(n.name || n.id);
+                        halo(name.length > 26 ? name.slice(0, 25) + '…' : name, n.x, n.y + n.r + 14 * inv, 12 * inv, C.text);
+                    }
+                }
+                ctx.globalAlpha = 1;
+            }
+
+            /* ---------- details panel ---------- */
+            const section = (title, body) => { const s = el('section'); s.appendChild(el('h3', null, title)); s.appendChild(body); return s; };
+            function kv(obj) {
+                const keys = Object.keys(obj || {});
+                if (!keys.length) return el('div', 'muted', 'None');
+                const dl = el('dl', 'kv');
+                for (const k of keys) { dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', null, fmt(obj[k]))); }
+                return dl;
+            }
+            function evidence(list) {
+                if (!list || !list.length) return el('div', 'muted', 'None');
+                const w = el('div');
+                for (const ev of list) w.appendChild(el('pre', null, JSON.stringify(ev, null, 2)));
+                return w;
+            }
+            function link(label, fn) { const b = el('button', 'link', label); b.type = 'button'; b.onclick = fn; return b; }
+            const goNode = n => select({ kind: 'node', ref: n }, true);
+            const goEdge = e => select({ kind: 'edge', ref: e }, false);
+            const nodeLabel = n => n.name || n.id;
+
+            function renderDetails() {
+                const box = $('details');
+                box.replaceChildren();
+                if (!selected) {
+                    box.appendChild(el('p', 'muted', 'Select a node or an edge to see its properties, connections and evidence.'));
+                    return;
+                }
+                const head = el('div', 'head'), body = el('div');
+                if (selected.kind === 'node') {
+                    const n = selected.ref, dot = el('span', 'dot big');
+                    dot.style.background = colorOf(n.type);
+                    body.appendChild(el('h2', null, nodeLabel(n)));
+                    const sub = el('div', 'sub');
+                    sub.appendChild(el('code', null, n.id)); sub.appendChild(el('span', 'badge', n.type));
+                    body.appendChild(sub);
+                    if (types.entities[n.type]) body.appendChild(el('p', 'muted', types.entities[n.type]));
+                    head.append(dot, body); box.appendChild(head);
+                    box.appendChild(section('Properties', kv(n.properties)));
+                    const list = n.edges.filter(e => !e.hidden), conn = el('div');
+                    if (!list.length) conn.appendChild(el('div', 'muted', 'None'));
+                    for (const e of list.slice(0, 200)) {
+                        const out = e.s === n, other = out ? e.t : e.s, row = el('div', 'row');
+                        row.appendChild(el('span', 'muted', e.s === e.t ? '↻' : out ? '→' : '←'));
+                        row.appendChild(link(e.type, () => goEdge(e)));
+                        row.appendChild(link(nodeLabel(other), () => goNode(other)));
+                        if (e.description) row.appendChild(el('div', 'desc', e.description));
+                        conn.appendChild(row);
+                    }
+                    if (list.length > 200) conn.appendChild(el('div', 'muted', '… and ' + (list.length - 200) + ' more'));
+                    box.appendChild(section('Connections (' + list.length + ')', conn));
+                    box.appendChild(section('Evidence', evidence(n.evidences)));
+                    box.appendChild(section('Metadata', kv(n.metadata)));
+                } else {
+                    const e = selected.ref;
+                    body.appendChild(el('h2', null, e.type));
+                    const sub = el('div', 'sub');
+                    sub.appendChild(el('code', null, e.id));
+                    body.appendChild(sub);
+                    if (types.edges[e.type]) body.appendChild(el('p', 'muted', types.edges[e.type]));
+                    head.appendChild(body); box.appendChild(head);
+                    const route = el('div', 'route');
+                    route.append(link(nodeLabel(e.s), () => goNode(e.s)), el('span', 'muted', e.s === e.t ? '↻' : '→'), link(nodeLabel(e.t), () => goNode(e.t)));
+                    box.appendChild(section('Route', route));
+                    box.appendChild(section('Description', e.description ? el('div', null, e.description) : el('div', 'muted', 'None')));
+                    box.appendChild(section('Properties', kv(e.properties)));
+                    if (e.size > 1) {
+                        const sib = el('div');
+                        for (const o of e.group) {
+                            const row = el('div', 'row');
+                            row.appendChild(el('span', 'muted', o === e ? '•' : ''));
+                            row.appendChild(o === e ? el('span', null, o.type) : link(o.type, () => goEdge(o)));
+                            row.appendChild(el('span', 'muted', o.description || o.s.id + ' → ' + o.t.id));
+                            sib.appendChild(row);
+                        }
+                        box.appendChild(section('Parallel edges (' + e.size + ')', sib));
+                    }
+                    box.appendChild(section('Evidence', evidence(e.evidences)));
+                    box.appendChild(section('Metadata', kv(e.metadata)));
+                }
+            }
+            function select(h, center) {
+                selected = h;
+                if (h && center && h.kind === 'node') { view.x = stage.clientWidth / 2 - h.ref.x * view.k; view.y = stage.clientHeight / 2 - h.ref.y * view.k; }
+                renderDetails(); requestDraw();
+            }
+
+            /* ---------- filters, search ---------- */
+            function chip(parent, label, color, count, set, title) {
+                const b = el('button', 'chip');
+                b.type = 'button';
+                if (color) { const d = el('span', 'dot'); d.style.background = color; b.appendChild(d); }
+                b.appendChild(el('span', null, label));
+                b.appendChild(el('span', 'count', count));
+                if (title) b.title = title;
+                b.onclick = () => { b.classList.toggle('off'); set.has(label) ? set.delete(label) : set.add(label); applyFilters(); };
+                parent.appendChild(b);
+            }
+            function buildFilters() {
+                const f = $('filters');
+                f.appendChild(el('h2', null, 'Node types'));
+                for (const t of nodeTypes) chip(f, t, colorOf(t), nodes.filter(n => n.type === t).length, hiddenNodeTypes, types.entities[t]);
+                f.appendChild(el('h2', null, 'Edge types'));
+                for (const t of edgeTypes) chip(f, t, null, edges.filter(e => e.type === t).length, hiddenEdgeTypes, types.edges[t]);
+            }
+            function applyFilters() {
+                for (const n of nodes) n.hidden = hiddenNodeTypes.has(n.type);
+                for (const e of edges) e.hidden = hiddenEdgeTypes.has(e.type) || e.s.hidden || e.t.hidden;
+                if (selected && selected.ref.hidden) { selected = null; renderDetails(); }
+                hover = null;
+                updateSearch();
+                wake(.4);
+            }
+            function updateSearch() {
+                const q = $('search').value.trim().toLowerCase();
+                matches = q ? new Set(nodes.filter(n => !n.hidden && n.hay.includes(q))) : null;
+                $('matches').textContent = q ? matches.size + (matches.size === 1 ? ' match' : ' matches') : '';
+                requestDraw();
+            }
+            $('search').addEventListener('input', updateSearch);
+            $('search').addEventListener('keydown', ev => {
+                if (ev.key === 'Enter' && matches && matches.size) select({ kind: 'node', ref: [...matches][0] }, true);
+            });
+
+            /* ---------- interaction ---------- */
+            const pos = ev => { const r = canvas.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
+            let drag = null, pan = null, down = null;
+            canvas.addEventListener('pointerdown', ev => {
+                canvas.setPointerCapture(ev.pointerId);
+                const p = pos(ev), h = pick(p);
+                down = { x: p.x, y: p.y, moved: false };
+                if (h && h.kind === 'node') drag = h.ref; else { pan = { x: view.x, y: view.y, px: p.x, py: p.y }; canvas.style.cursor = 'grabbing'; }
+            });
+            canvas.addEventListener('pointermove', ev => {
+                const p = pos(ev);
+                if (down && !down.moved && Math.hypot(p.x - down.x, p.y - down.y) > 3) down.moved = true;
+                if (drag && down.moved) {
+                    const w = toWorld(p);
+                    drag.x = w.x; drag.y = w.y; drag.pinned = true;
+                    wake(.3); requestDraw();
+                } else if (pan) {
+                    view.x = pan.x + p.x - pan.px; view.y = pan.y + p.y - pan.py; requestDraw();
+                } else if (!down) {
+                    const h = pick(p);
+                    if ((h && h.ref) !== (hover && hover.ref)) { hover = h; canvas.style.cursor = h ? 'pointer' : 'grab'; requestDraw(); }
+                }
+            });
+            canvas.addEventListener('pointerup', ev => {
+                if (down && !down.moved) select(pick(pos(ev)));
+                drag = pan = down = null; canvas.style.cursor = 'grab';
+            });
+            canvas.addEventListener('pointerleave', () => { if (hover && !down) { hover = null; requestDraw(); } });
+            canvas.addEventListener('dblclick', ev => {
+                const h = pick(pos(ev));
+                if (h && h.kind === 'node') { h.ref.pinned = false; wake(.3); }
+            });
+            canvas.addEventListener('wheel', ev => {
+                ev.preventDefault();
+                const p = pos(ev), k = Math.min(4, Math.max(.1, view.k * Math.exp(-ev.deltaY * .0015)));
+                view.x = p.x - (p.x - view.x) * k / view.k; view.y = p.y - (p.y - view.y) * k / view.k; view.k = k;
+                requestDraw();
+            }, { passive: false });
+            document.addEventListener('keydown', ev => {
+                const typing = ev.target === $('search');
+                if (ev.key === '/' && !typing) { ev.preventDefault(); $('search').focus(); }
+                else if (ev.key === 'Escape') { $('search').value = ''; $('search').blur(); updateSearch(); select(null); }
+                else if (ev.key === 'f' && !typing) fit();
+            });
+            function fit() {
+                const vis = nodes.filter(n => !n.hidden);
+                if (!vis.length) return;
+                let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+                for (const n of vis) { x0 = Math.min(x0, n.x - n.r); y0 = Math.min(y0, n.y - n.r); x1 = Math.max(x1, n.x + n.r); y1 = Math.max(y1, n.y + n.r); }
+                const W = stage.clientWidth, H = stage.clientHeight;
+                view.k = Math.min(2, Math.max(.1, Math.min((W - 140) / Math.max(x1 - x0, 1), (H - 140) / Math.max(y1 - y0, 1))));
+                view.x = W / 2 - (x0 + x1) / 2 * view.k; view.y = H / 2 - (y0 + y1) / 2 * view.k;
+                requestDraw();
+            }
+            $('fit').onclick = fit;
+            $('relayout').onclick = () => { nodes.forEach(n => { n.pinned = false; }); wake(1); };
+
+            /* ---------- boot ---------- */
+            function resize() {
+                dpr = window.devicePixelRatio || 1;
+                canvas.width = Math.max(1, Math.round(stage.clientWidth * dpr));
+                canvas.height = Math.max(1, Math.round(stage.clientHeight * dpr));
+                requestDraw();
+            }
+            $('summary').textContent = nodes.length + ' nodes · ' + edges.length + ' edges';
+            if (skipped) { $('warn').textContent = skipped + ' dangling edge' + (skipped === 1 ? '' : 's') + ' not shown (run graph validate)'; }
+            if (!nodes.length) $('empty').style.display = 'grid';
+            readTheme();
+            matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTheme(); requestDraw(); });
+            new ResizeObserver(resize).observe(stage);
+            buildFilters();
+            renderDetails();
+            resize();
+            alpha = 1;
+            for (let i = 0; i < (nodes.length <= 400 ? 260 : 80); i++) { tick(); alpha *= .985; }
+            alpha = .02;
+            fit();
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Graph edge contract",
+  "description": "Edge type definitions used by graph-cli.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri-reference"
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/edgeDefinition"
+  },
+  "$defs": {
+    "edgeDefinition": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/entityTypeList"
+        },
+        "target": {
+          "$ref": "#/$defs/entityTypeList"
+        },
+        "properties": {
+          "$ref": "#/$defs/propertyDefinitions"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "properties"
+      ],
+      "additionalProperties": false
+    },
+    "entityTypeList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "propertyDefinitions": {
+      "type": "object",
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/propertyDefinition"
+      }
+    },
+    "propertyDefinition": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "string",
+            "number",
+            "integer",
+            "boolean"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "string",
+                "number",
+                "integer",
+                "boolean"
+              ]
+            },
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
