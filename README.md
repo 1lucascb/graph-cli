@@ -4,6 +4,11 @@ A local command-line tool for managing a JSON-backed graph with customizable
 entity and edge types. The workspace is stored in `.graph/` under the current
 working directory.
 
+![](assets/1.png)
+![](assets/2.png)
+![](assets/3.png)
+
+
 ## Install
 
 Requires Python 3.10 or newer and Git. Install the CLI directly from GitHub with:
