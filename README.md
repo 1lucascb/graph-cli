@@ -539,7 +539,7 @@ node more than once.
 | --- | --- |
 | `SOURCE_ID` | Required starting node ID. |
 | `TARGET_ID` | Required destination node ID. |
-| `--direction out|in|both` | Direction in which to follow edges; default `out`. `in` traverses incoming edges backward; `both` follows either orientation. Output edges retain their stored orientation. |
+| `--direction [out,in,both]` | Direction in which to follow edges; default `out`. `in` traverses incoming edges backward; `both` follows either orientation. Output edges retain their stored orientation. |
 | `--edge TYPE[,TYPE...]` | Optional set of allowed edge types. Names are case-insensitive and must exist. |
 | `--max-depth N` | Optional non-negative maximum hop count. If omitted, the search allows up to the number of graph nodes minus one hops. `0` permits only a zero-hop path when source and target are the same node. |
 | `--limit N` | Positive maximum number of paths to return; default `1`. |
