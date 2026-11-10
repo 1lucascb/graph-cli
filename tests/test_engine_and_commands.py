@@ -34,7 +34,9 @@ def _write_contracts(directory: Path) -> None:
     )
 
 
-def _run_graph(directory: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def _run_graph(
+    directory: Path, *args: str, input_text: str | None = None,
+) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
     environment["PYTHONPATH"] = os.pathsep.join(
         filter(None, [str(ROOT), environment.get("PYTHONPATH", "")])
@@ -45,6 +47,7 @@ def _run_graph(directory: Path, *args: str) -> subprocess.CompletedProcess[str]:
         env=environment,
         capture_output=True,
         text=True,
+        input=input_text,
     )
 
 
@@ -389,6 +392,137 @@ def test_cli_edges_p_property_filter_is_case_insensitive_and_composable(tmp_path
     assert json.loads(exact.stdout)["rows"] == [{"properties": {"protocol": "HTTPS", "weight": 1}}]
     assert combined.returncode == 0, combined.stderr
     assert json.loads(combined.stdout)["rows"] == [{"properties": {"protocol": "HTTPS", "weight": 1}}]
+
+
+def test_cli_import_applies_nodes_before_edges_and_generates_missing_edge_ids(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_contracts(workspace / ".graph")
+    import_path = workspace / "records.jsonl"
+    import_path.write_text(
+        '\n'.join([
+            json.dumps({"kind": "edge", "type": "CALLS", "source": "a", "target": "b", "properties": {"protocol": "grpc"}}),
+            json.dumps({"id": "a", "type": "API", "name": "A", "properties": {"language": "python"}}),
+            json.dumps({"id": "b", "type": "API", "name": "B", "properties": {"language": "go"}}),
+        ]) + '\n',
+        encoding="utf-8",
+    )
+
+    result = _run_graph(workspace, "import", str(import_path))
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["valid"] is True
+    assert payload["dry_run"] is False
+    assert payload["summary"] == {"created": 3, "updated": 0, "unchanged": 0, "errors": 0}
+    store = json.loads((workspace / ".graph" / "graph.json").read_text(encoding="utf-8"))
+    assert [node["id"] for node in store["nodes"]] == ["a", "b"]
+    assert store["edges"][0]["source"] == "a"
+    assert store["edges"][0]["target"] == "b"
+    assert store["edges"][0]["id"]
+
+
+def test_cli_import_dry_run_from_stdin_does_not_write_store(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_contracts(workspace / ".graph")
+    line = json.dumps({"id": "a", "type": "API", "name": "A", "properties": {"language": "python"}})
+
+    result = _run_graph(workspace, "import", "-", "--dry-run", input_text=line + "\n")
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {
+        "valid": True,
+        "dry_run": True,
+        "summary": {"created": 1, "updated": 0, "unchanged": 0, "errors": 0},
+        "errors": [],
+    }
+    assert not (workspace / ".graph" / "graph.json").exists()
+
+
+def test_cli_import_validation_errors_include_line_and_preserve_store_atomically(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_contracts(workspace / ".graph")
+    graph = Graph(workspace / ".graph")
+    graph.add_node("existing", "Existing", "API", {"language": "python"})
+    graph_path = workspace / ".graph" / "graph.json"
+    before = graph_path.read_bytes()
+    import_path = workspace / "invalid.jsonl"
+    import_path.write_text(
+        '\n'.join([
+            json.dumps({"id": "new-node", "type": "API", "name": "New", "properties": {"language": "python"}}),
+            json.dumps({"kind": "edge", "id": "dangling-edge", "type": "CALLS", "source": "new-node", "target": "missing"}),
+            "{invalid json",
+        ]) + '\n',
+        encoding="utf-8",
+    )
+
+    result = _run_graph(workspace, "import", str(import_path))
+
+    assert result.returncode == 3
+    payload = json.loads(result.stdout)
+    assert payload["valid"] is False
+    assert payload["summary"] == {"created": 2, "updated": 0, "unchanged": 0, "errors": 2}
+    assert {error["line"] for error in payload["errors"]} == {2, 3}
+    assert graph_path.read_bytes() == before
+
+
+def test_cli_import_on_conflict_error_skip_replace_and_dry_run(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_contracts(workspace / ".graph")
+    graph = Graph(workspace / ".graph")
+    graph.add_node("a", "Old A", "API", {"language": "python"})
+    graph.add_node("b", "Old B", "API", {"language": "python"})
+    existing_edge = graph.add_edge("a", "CALLS", "b", {"protocol": "http"}, description="old edge")
+    graph_path = workspace / ".graph" / "graph.json"
+    before = graph_path.read_bytes()
+    import_path = workspace / "replacement.jsonl"
+    import_path.write_text(
+        '\n'.join([
+            json.dumps({"kind": "node", "id": "a", "type": "API", "name": "New A", "properties": {"language": "python"}}),
+            json.dumps({"kind": "edge", "id": existing_edge.id, "type": "CALLS", "source": "a", "target": "b", "description": "updated edge", "properties": {"protocol": "http"}}),
+        ]) + '\n',
+        encoding="utf-8",
+    )
+
+    default_error = _run_graph(workspace, "import", str(import_path))
+    skip = _run_graph(workspace, "import", str(import_path), "--on-conflict=skip")
+    dry_replace = _run_graph(workspace, "import", str(import_path), "--on-conflict=replace", "--dry-run")
+
+    assert default_error.returncode == 3
+    assert json.loads(default_error.stdout)["summary"] == {
+        "created": 0, "updated": 0, "unchanged": 0, "errors": 2,
+    }
+    assert graph_path.read_bytes() == before
+    assert skip.returncode == 0, skip.stderr
+    assert json.loads(skip.stdout)["summary"] == {
+        "created": 0, "updated": 0, "unchanged": 2, "errors": 0,
+    }
+    assert graph_path.read_bytes() == before
+    assert dry_replace.returncode == 0, dry_replace.stderr
+    assert json.loads(dry_replace.stdout)["summary"] == {
+        "created": 0, "updated": 2, "unchanged": 0, "errors": 0,
+    }
+    assert graph_path.read_bytes() == before
+
+    replace = _run_graph(workspace, "import", str(import_path), "--on-conflict=replace")
+
+    assert replace.returncode == 0, replace.stderr
+    assert json.loads(replace.stdout)["summary"] == {
+        "created": 0, "updated": 2, "unchanged": 0, "errors": 0,
+    }
+    replaced = Graph(workspace / ".graph").load()
+    assert next(node for node in replaced["nodes"] if node.id == "a").name == "New A"
+    assert replaced["edges"][0].id == existing_edge.id
+    assert replaced["edges"][0].description == "updated edge"
+
+    unchanged = _run_graph(workspace, "import", str(import_path), "--on-conflict=replace")
+    assert unchanged.returncode == 0, unchanged.stderr
+    assert json.loads(unchanged.stdout)["summary"] == {
+        "created": 0, "updated": 0, "unchanged": 2, "errors": 0,
+    }
 
 def test_ambiguous_cli_edge_delete_returns_two_without_deleting(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"

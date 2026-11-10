@@ -2,7 +2,7 @@
 
 import sys
 
-from commands import admin, mutations, queries, records, visualization  # noqa: F401
+from commands import admin, importing, mutations, queries, records, visualization  # noqa: F401
 from commands.common import cli
 from graphs.engine import GraphError
 

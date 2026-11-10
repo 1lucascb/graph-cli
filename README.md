@@ -276,6 +276,48 @@ If the store file does not exist, validation treats it as an empty graph. A
 missing workspace or unreadable contract/store is reported in JSON with exit
 code `4`; validation does not initialize or repair anything.
 
+### `graph import`
+
+```text
+graph import FILE [--on-conflict=error|skip|replace] [--dry-run]
+```
+
+Import one JSON object per line. Use `-` as `FILE` to read from standard input.
+Each record can include `"kind":"node"` or `"kind":"edge"`; when omitted,
+records with `source` or `target` fields are treated as edges and other records
+as nodes. The `kind` marker is removed before the record is stored. Edge records
+may omit `id`, in which case an ID is generated.
+
+All input is parsed and validated against the current contracts and the
+existing graph before anything is written. Nodes are staged before edges, so
+an edge may refer to a node appearing later in the input. Any invalid line or
+graph validation error prevents the entire import. Errors include the input
+line when they correspond to an imported record. Successful imports are saved
+in one atomic graph-store write.
+
+`--on-conflict` controls records that match existing data. Node conflicts use
+the node ID. Edge conflicts use the edge ID or the same edge type, endpoints,
+and properties; a semantic edge replacement keeps the existing edge ID.
+`error` (the default) reports a conflict and aborts the whole import, `skip`
+leaves the existing record unchanged, and `replace` updates it when content
+differs. Reimporting identical content with `replace` counts it as unchanged.
+
+`--dry-run` performs the same parsing and validation and reports the planned
+counts without writing. Output includes `valid`, `dry_run`, a `summary` with
+`created`, `updated`, `unchanged`, and `errors` counts, and an `errors` array.
+The summary counts describe the planned import; any errors abort all writes.
+Invalid imports return exit code `3` and do not modify the graph store.
+
+Examples:
+
+```sh
+graph import records.jsonl
+graph import records.jsonl --on-conflict=replace
+graph import records.jsonl --on-conflict=skip --dry-run
+graph import records.jsonl --dry-run
+cat records.jsonl | graph import -
+```
+
 ### `graph add-node`
 
 ```text
