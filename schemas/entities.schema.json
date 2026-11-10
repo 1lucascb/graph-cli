@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Graph entity contract",
-  "description": "Entity type definitions used by graph-cli.",
+  "description": "Entity type definitions used by graph-lcb.",
   "type": "object",
   "properties": {
     "$schema": {

@@ -24,7 +24,7 @@ wheels = [
 ]
 
 [[package]]
-name = "graph-cli"
+name = "graph-lcb"
 version = "0.1.0"
 source = { editable = "." }
 

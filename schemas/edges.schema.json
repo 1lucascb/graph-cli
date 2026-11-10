@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Graph edge contract",
-  "description": "Edge type definitions used by graph-cli.",
+  "description": "Edge type definitions used by graph-lcb.",
   "type": "object",
   "properties": {
     "$schema": {

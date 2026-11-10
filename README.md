@@ -1,12 +1,12 @@
-# graph-cli
+# graph-lcb
 
 A local command-line tool for managing a JSON-backed graph with customizable
 entity and edge types. The workspace is stored in `.graph/` under the current
 working directory.
 
-![](assets/1.png)
-![](assets/2.png)
-![](assets/3.png)
+![](docs/assets/1.png)
+![](docs/assets/2.png)
+![](docs/assets/3.png)
 
 
 ## Install
@@ -14,7 +14,7 @@ working directory.
 Requires Python 3.10 or newer and Git. Install the CLI directly from GitHub with:
 
 ```sh
-python -m pip install "git+https://github.com/1lucascb/graph-cli.git"
+pip install graphcli
 ```
 
 This installs the `graph` command. To install the test dependencies and run the

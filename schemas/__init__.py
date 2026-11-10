@@ -1,1 +1,1 @@
-"""JSON schemas bundled with graph-cli."""
+"""JSON schemas bundled with graph-lcb."""
