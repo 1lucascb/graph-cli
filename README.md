@@ -11,7 +11,7 @@ working directory.
 
 ## Install
 
-Requires Python 3.10 or newer and Git. Install the CLI directly from GitHub with:
+Requires Python 3.10 or newer. Install the CLI directly with:
 
 ```sh
 pip install graph-lcb
@@ -56,6 +56,26 @@ without creating a workspace.
 The contracts and graph store are resolved relative to the process's current
 working directory, not the location of the installed CLI. Run commands from
 the project whose `.graph/` you intend to access.
+
+## AI agents and skills
+
+When using an AI agent to explore this graph, start with the
+[graph-query skill](docs/skills/graph-query/SKILL.md). It guides agents to check
+the contract, confirm node IDs, and choose between `nodes`, `edges`, `traverse`,
+and `path` queries.
+
+For a thorough, evidence-backed map of a codebase, use the
+[codebase-mapping skill](docs/skills/codebase-mapping/SKILL.md). It tracks file
+coverage and pending work in a durable `progress.txt` so mapping can resume
+across sessions.
+
+You can create additional skills for the tasks and knowledge your project needs,
+such as documenting sources, mapping systems, or exploring flows, processes,
+infrastructure, and knowledge bases. The graph is flexible: define domain
+entities and relationships in the contracts, add typed properties to capture
+the details you need, and attach evidence objects to nodes or edges to record
+supporting sources or locators. Skills can then guide agents on how to interpret
+that model, gather evidence, and query it consistently.
 
 ## Contract format
 
@@ -259,7 +279,9 @@ code `4`; validation does not initialize or repair anything.
 ### `graph add-node`
 
 ```text
-graph add-node ID NAME TYPE [--properties JSON] [--evidences JSON_ARRAY]
+graph add-node ID NAME TYPE [--description TEXT]
+              [--properties JSON | --p.KEY=VALUE ...]
+              [--evidences JSON_ARRAY]
 ```
 
 Create a node and append it to `.graph/graph.json`.
@@ -269,18 +291,20 @@ Create a node and append it to `.graph/graph.json`.
 | `ID` | Required, unique node identifier. Must match `^[a-z0-9][a-z0-9._-]*$`: the first character is a lowercase ASCII letter or digit; later characters may also include `.`, `_`, and `-`. |
 | `NAME` | Required display name, stored as supplied. |
 | `TYPE` | Required entity type from `entities.json`; lookup is case-insensitive and the stored type uses the contract's canonical spelling. |
+| `--description TEXT` | Optional free-form node description; defaults to the empty string. |
 | `--properties JSON` | Complete properties object. Defaults to `{}`. Supplied keys must be defined in the entity contract, values must have the declared JSON type, and all required properties must be present. |
+| `--p.KEY=VALUE` | Set one property. Repeat for multiple properties. Values `3`, `true`, and `null` become JSON numbers, booleans, and null; other unquoted values such as `Python` become strings. Cannot be combined with `--properties`. |
 | `--evidences JSON_ARRAY` | Optional JSON array in which every item must be an object. Defaults to `[]`; evidence fields and nested values are user-defined. |
 
 The node's metadata receives UTC `created_at` and `updated_at` timestamps.
 The output is the complete node record, including `id`, `type`, `name`,
-`properties`, `metadata`, and `evidences`.
+`description`, `properties`, `metadata`, and `evidences`.
 
 Example:
 
 ```sh
 graph add-node orders-api "Orders API" API \
-  --properties '{"language":"Python"}' \
+  --p.language=Python \
   --evidences '[{"source":"src/orders/api.py","locator":{"start_line":12,"end_line":28},"note":"API implementation"}]'
 ```
 
@@ -289,7 +313,7 @@ graph add-node orders-api "Orders API" API \
 ```text
 graph add-edge SOURCE_ID EDGE_TYPE TARGET_ID
               [--description TEXT]
-              [--properties JSON]
+              [--properties JSON | --p.KEY=VALUE ...]
               [--evidences JSON_ARRAY]
 ```
 
@@ -302,6 +326,7 @@ Create a directed edge between existing nodes.
 | `TARGET_ID` | Required existing target node ID. |
 | `--description TEXT` | Optional free-form relationship description; defaults to the empty string. If there is already any edge between the same endpoints, the new edge must have a non-empty description. |
 | `--properties JSON` | Complete properties object. Defaults to `{}` and is checked against the edge type's property contract. |
+| `--p.KEY=VALUE` | Set one property. Repeat for multiple properties. JSON numbers, booleans, null, arrays, and objects retain their types; other unquoted values become strings. Cannot be combined with `--properties`. |
 | `--evidences JSON_ARRAY` | Optional array of evidence objects; defaults to `[]`. |
 
 The edge contract must allow the source node's entity type in `source` and the
@@ -328,7 +353,7 @@ graph add-edge orders-api CALLS stock-api \
 ```text
 graph nodes [ID]
             [--type TYPE[,TYPE...]]
-            [--properties JSON]
+            [--properties JSON] [--p.KEY=VALUE ...]
             [--prefix TEXT] [--suffix TEXT] [--contains TEXT]
             [--limit N] [--fields FIELD[,FIELD...]]
 ```
@@ -337,17 +362,19 @@ Get one node by ID or list/filter nodes.
 
 | Parameter | Meaning |
 | --- | --- |
-| `ID` | Optional exact node ID. Returns the complete record directly, not a list envelope. It cannot be combined with `--properties` or `--fields`. |
+| `ID` | Optional exact node ID. Returns the complete record directly, not a list envelope. It cannot be combined with property filters or `--fields`. |
 | `--type TYPE[,TYPE...]` | Keep nodes whose entity type matches any listed type, case-insensitively. |
 | `--properties JSON` | Keep nodes whose properties match every supplied key/value. Values are compared for equality; extra properties on a node are allowed. |
+| `--p.KEY=VALUE` | Match one property. Repeat for multiple keys; string values compare case-insensitively, while other JSON types compare by value. Can be combined with `--properties` when they filter different keys. |
 | `--prefix TEXT` | Case-insensitive prefix match against node `name`. |
 | `--suffix TEXT` | Case-insensitive suffix match against node `name`. |
 | `--contains TEXT` | Case-insensitive substring match against node `name`. |
 | `--limit N` | Optional positive integer. Applied after filtering; `1` or greater. |
-| `--fields FIELD[,FIELD...]` | Return only the selected fields, in the requested order. Allowed fields: `id`, `type`, `name`, `properties`, `metadata`, `evidences`. Not valid with an ID lookup. |
+| `--fields FIELD[,FIELD...]` | Return only the selected fields, in the requested order. Allowed fields: `id`, `type`, `name`, `description`, `properties`, `metadata`, `evidences`. Not valid with an ID lookup. |
 
 All list filters combine with AND, except multiple values within `--type`,
-which combine with OR. List output is an object containing `rows`, `total`,
+which combine with OR. `--properties` keeps its exact comparison behavior;
+string comparisons from `--p.KEY` ignore case. List output is an object containing `rows`, `total`,
 and `truncated`. `total` is the count after filtering but before the limit;
 `truncated` is true if the limit omitted matches. Without `--fields`, rows
 contain full node records. Node list order follows the order in `graph.json`.
@@ -358,6 +385,7 @@ Examples:
 graph nodes
 graph nodes orders-api
 graph nodes --type=API,WORKER --contains=order --properties '{"language":"Python"}'
+graph nodes --p.language=python
 graph nodes --prefix=order --limit=10 --fields=id,name,type
 ```
 
@@ -366,7 +394,7 @@ graph nodes --prefix=order --limit=10 --fields=id,name,type
 ```text
 graph edges [EDGE_ID]
             [--type TYPE[,TYPE...]]
-            [--properties JSON]
+            [--properties JSON] [--p.KEY=VALUE ...]
             [--from SOURCE_ID] [--to TARGET_ID]
             [--limit N]
             [--fields FIELD[,FIELD...]]
@@ -379,12 +407,15 @@ Get one edge by its generated ID or list/filter edges.
 | `EDGE_ID` | Optional exact edge ID. Returns the complete edge record directly and cannot be combined with filters. |
 | `--type TYPE[,TYPE...]` | Keep edges whose type matches any listed contract type, case-insensitively. Each requested type must exist. |
 | `--properties JSON` | Keep edges matching every supplied property key/value. |
+| `--p.KEY=VALUE` | Match one property. Repeat for multiple keys; string values compare case-insensitively, while other JSON types compare by value. Can be combined with `--properties` when they filter different keys. |
 | `--from SOURCE_ID` | Keep edges whose source is this existing node ID. |
 | `--to TARGET_ID` | Keep edges whose target is this existing node ID. |
 | `--limit N` | Optional positive integer. Applied after filtering; `1` or greater. |
 | `--fields FIELD[,FIELD...]` | Return objects with only selected fields, in requested order. Allowed fields: `id`, `type`, `source`, `target`, `target_type`, `description`, `properties`, `metadata`, `evidences`. |
 
 Filters combine with AND; multiple `--type` values combine with OR.
+`--properties` keeps exact comparison behavior; string comparisons from
+`--p.KEY` ignore case.
 `--from` and `--to` can be used together. An unknown endpoint ID is an error.
 List output uses the same `rows`, `total`, `truncated` envelope as `nodes`.
 Without `--fields`, each row is the compact tuple
@@ -396,6 +427,7 @@ Examples:
 
 ```sh
 graph edges --type=CALLS --from=orders-api --limit=10
+graph edges --p.protocol=https
 graph edges --to=stock-api --properties '{"method":"GET"}' \
   --fields=id,type,source,target,target_type,description,properties
 graph edges 6c7f7d2c-22f0-49d2-a7f3-37d9b8cb0988
@@ -405,10 +437,13 @@ graph edges 6c7f7d2c-22f0-49d2-a7f3-37d9b8cb0988
 
 ```text
 graph edit node ID
-            [--name TEXT] [--properties JSON] [--evidences JSON_ARRAY]
+            [--name TEXT] [--description TEXT]
+            [--properties JSON | --p.KEY=VALUE ...]
+            [--evidences JSON_ARRAY]
 
 graph edit edge EDGE_ID
-            [--description TEXT] [--properties JSON] [--evidences JSON_ARRAY]
+            [--description TEXT] [--properties JSON | --p.KEY=VALUE ...]
+            [--evidences JSON_ARRAY]
 ```
 
 Update a node or edge in place. IDs, node/edge types, and edge endpoints are
@@ -418,8 +453,14 @@ For nodes:
 
 - `ID` is the existing node ID.
 - `--name TEXT` replaces the display name.
+- `--description TEXT` replaces the optional description; an empty value clears it.
 - `--properties JSON` replaces the entire properties object, not just selected
   keys. The resulting object must satisfy the current entity contract.
+- `--p.KEY=VALUE` updates only the named property, preserving all others.
+  Repeat it to update multiple properties. JSON numbers, booleans, null,
+  arrays, and objects retain their types; other unquoted values such as
+  `Python` become strings. The merged object is checked against the current
+  entity contract. Cannot be combined with `--properties`.
 - `--evidences JSON_ARRAY` replaces the complete evidence list; `[]` clears it.
 
 For edges:
@@ -428,6 +469,11 @@ For edges:
 - `--description TEXT` replaces the description.
 - `--properties JSON` replaces the entire properties object and must satisfy
   the current edge contract.
+- `--p.KEY=VALUE` updates only the named property, preserving all others.
+  Repeat it to update multiple properties. JSON numbers, booleans, null,
+  arrays, and objects retain their types; other unquoted values become strings.
+  The merged object is checked against the current edge contract. Cannot be
+  combined with `--properties`.
 - `--evidences JSON_ARRAY` replaces the complete evidence list; `[]` clears it.
 
 At least one editable option is required. Omitted fields remain unchanged.

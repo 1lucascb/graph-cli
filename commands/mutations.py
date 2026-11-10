@@ -1,7 +1,7 @@
 import sys
 from cli import CLIError, Context
 from graphs.engine import Graph, GraphError
-from commands.common import cli, evidences, edge_response, emit, parse_properties
+from commands.common import cli, evidences, edge_response, emit, property_arguments
 
 @cli.handler("edit", "Edit node fields or edge description/properties/evidences: edit node|edge ...")
 def edit_record(ctx: Context) -> None:
@@ -9,42 +9,43 @@ def edit_record(ctx: Context) -> None:
     graph = Graph()
     if target == "node":
         if ctx.flag("id") is not None:
-            raise CLIError("edit node ID is positional: edit node ID --name=...")
+            raise CLIError("edit node ID is positional: edit node ID --name=... or --description=...")
         if len(ctx.args) != 2:
-            raise CLIError("use edit node ID with --name, --properties, and/or --evidences")
+            raise CLIError("use edit node ID with --name, --description, --properties or --p.KEY=VALUE, and/or --evidences")
         reference = ctx.positional(1)
         name = ctx.flag("name")
-        raw_properties = ctx.flag("properties")
+        description = ctx.flag("description")
         raw_evidences = ctx.flag("evidences")
-        if name is None and raw_properties is None and raw_evidences is None:
-            raise CLIError("provide --name, --properties, and/or --evidences")
+        parsed_properties, property_updates = property_arguments(ctx)
+        if name is None and description is None and parsed_properties is None and property_updates is None and raw_evidences is None:
+            raise CLIError("provide --name, --description, --properties or --p.KEY=VALUE, and/or --evidences")
         if name is not None and not isinstance(name, str):
             raise CLIError("--name requires a value")
-        parsed_properties = parse_properties(raw_properties)
+        if description is not None and not isinstance(description, str):
+            raise CLIError("--description requires text")
         parsed_evidences = None
         if raw_evidences is not None:
             parsed_evidences = evidences(raw_evidences)
-        result = graph.edit_node(reference, name=name, properties=parsed_properties, evidences=parsed_evidences)
+        result = graph.edit_node(reference, name=name, description=description, properties=parsed_properties, property_updates=property_updates, evidences=parsed_evidences)
     elif target == "edge":
         if ctx.flag("id") is not None:
             raise CLIError("edit edge ID is positional: edit edge ID --description=...")
         if len(ctx.args) != 2:
-            raise CLIError("use edit edge ID with --description, --properties, and/or --evidences")
+            raise CLIError("use edit edge ID with --description, --properties or --p.KEY=VALUE, and/or --evidences")
         edge_id = ctx.positional(1)
         description = ctx.flag("description")
-        raw_properties = ctx.flag("properties")
         raw_evidences = ctx.flag("evidences")
         if not isinstance(edge_id, str):
             raise CLIError("edit edge requires an edge ID")
         if description is not None and not isinstance(description, str):
             raise CLIError("--description requires text")
-        if description is None and raw_properties is None and raw_evidences is None:
-            raise CLIError("provide --description, --properties, and/or --evidences")
-        parsed_properties = parse_properties(raw_properties)
+        parsed_properties, property_updates = property_arguments(ctx)
+        if description is None and parsed_properties is None and property_updates is None and raw_evidences is None:
+            raise CLIError("provide --description, --properties or --p.KEY=VALUE, and/or --evidences")
         parsed_evidences = None
         if raw_evidences is not None:
             parsed_evidences = evidences(raw_evidences)
-        result = graph.edit_edge(edge_id, description=description, properties=parsed_properties, evidences=parsed_evidences)
+        result = graph.edit_edge(edge_id, description=description, properties=parsed_properties, property_updates=property_updates, evidences=parsed_evidences)
         result = edge_response(result, graph.load()["nodes"])
     else:
         raise CLIError("expected 'node' or 'edge'")

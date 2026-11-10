@@ -162,6 +162,7 @@ class Graph:
     def add_node(
         self, node_id: str, name: str, kind: str, properties: dict[str, Any],
         evidences: list[dict[str, Any]] | None = None,
+        description: str = "",
     ) -> Node:
         requested_kind = kind
         kind = self._canonical_type(kind, self.entities)
@@ -174,12 +175,14 @@ class Graph:
             evidences = []
         if not isinstance(evidences, list) or any(not isinstance(item, dict) for item in evidences):
             raise GraphError("evidences must be a list of objects")
+        if not isinstance(description, str):
+            raise GraphError("description must be a string")
         data = self.load()
         if any(node.id == node_id for node in data["nodes"]):
             raise GraphError(f"node id already exists: {node_id}")
         now = self.__now_datetime()
         node = Node(
-            id=node_id, type=kind, name=name, properties=properties,
+            id=node_id, type=kind, name=name, description=description, properties=properties,
             metadata={"created_at": now, "updated_at": now}, evidences=evidences,
         )
         data["nodes"].append(node)
@@ -234,7 +237,9 @@ class Graph:
         return edge
 
     def edit_node(self, reference: str, *, name: str | None = None,
+                  description: str | None = None,
                   properties: dict[str, Any] | None = None,
+                  property_updates: dict[str, Any] | None = None,
                   evidences: list[dict[str, Any]] | None = None) -> Node:
         data = self.load()
         node = self.resolve_node(data, reference)
@@ -244,15 +249,24 @@ class Graph:
         canonical_node_type = self._canonical_type(node_type, self.entities)
         if canonical_node_type is None:
             raise GraphError(f"unknown entity type: {node_type}; valid types: {self._allowed(self.entities)}")
-        self._require_valid_properties(
-            canonical_node_type,
-            properties if properties is not None else node.properties,
-            self.entities,
+        if property_updates is not None and not isinstance(property_updates, dict):
+            raise GraphError("property updates must be an object")
+        if properties is not None and property_updates is not None:
+            raise GraphError("full properties replacement cannot be combined with property updates")
+        updated_properties = (
+            properties if properties is not None else
+            {**node.properties, **property_updates} if property_updates is not None else
+            node.properties
         )
+        self._require_valid_properties(canonical_node_type, updated_properties, self.entities)
         if name is not None:
             node.name = name
-        if properties is not None:
-            node.properties = properties
+        if description is not None:
+            if not isinstance(description, str):
+                raise GraphError("description must be a string")
+            node.description = description
+        if properties is not None or property_updates is not None:
+            node.properties = updated_properties
         if evidences is not None:
             if not isinstance(evidences, list) or any(not isinstance(item, dict) for item in evidences):
                 raise GraphError("evidences must be a list of objects")
@@ -263,6 +277,7 @@ class Graph:
 
     def edit_edge(self, edge_id: str, *, description: str | None = None,
                   properties: dict[str, Any] | None = None,
+                  property_updates: dict[str, Any] | None = None,
                   evidences: list[dict[str, Any]] | None = None) -> Edge:
         data = self.load()
         edge = next((item for item in data["edges"] if item.id == edge_id), None)
@@ -274,12 +289,16 @@ class Graph:
             raise GraphError(f"unknown edge type: {edge_type}; valid types: {self._allowed(self.edge_types)}")
         if description is not None and not isinstance(description, str):
             raise GraphError("description must be a string")
-        self._require_valid_properties(
-            canonical_edge_type,
-            properties if properties is not None else edge.properties,
-            self.edge_types,
+        if property_updates is not None and not isinstance(property_updates, dict):
+            raise GraphError("property updates must be an object")
+        if properties is not None and property_updates is not None:
+            raise GraphError("full properties replacement cannot be combined with property updates")
+        edge_properties = (
+            properties if properties is not None else
+            {**edge.properties, **property_updates} if property_updates is not None else
+            edge.properties
         )
-        edge_properties = properties if properties is not None else edge.properties
+        self._require_valid_properties(canonical_edge_type, edge_properties, self.edge_types)
         edge_description = description if description is not None else edge.description
         parallel = [other for other in data["edges"] if other.id != edge_id
                     and other.source == edge.source
@@ -289,8 +308,8 @@ class Graph:
             raise GraphError(f"duplicate edge: {edge_type} {edge.source} -> {edge.target}")
         if parallel and not edge_description.strip():
             raise GraphError("parallel edges require a description")
-        if properties is not None:
-            edge.properties = properties
+        if properties is not None or property_updates is not None:
+            edge.properties = edge_properties
         if description is not None:
             edge.description = description
         if evidences is not None:
@@ -452,7 +471,8 @@ class Graph:
                    and (canonical_kinds is None or edge.type.casefold() in canonical_kinds)
                    and (source_id is None or edge.source == source_id)
                    and (target_id is None or edge.target == target_id)
-                   and all(edge.properties.get(k) == v for k, v in (properties or {}).items())]
+                   and all(k in edge.properties and edge.properties[k] == v
+                           for k, v in (properties or {}).items())]
         records.sort(key=lambda edge: (edge.source, edge.type, edge.target, edge.id))
         return records if limit is None else records[:limit]
 

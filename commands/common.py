@@ -93,8 +93,56 @@ def init_graph(ctx: Context) -> None:
     emit({"initialized": True, "directory": ".graph"})
 
 
-def properties(ctx: Context) -> dict:
-    return parse_properties(ctx.flag("properties", default="{}")) or {}
+def property_arguments(
+    ctx: Context, *, allow_combined: bool = False,
+) -> tuple[dict | None, dict | None]:
+    """Parse full properties replacement and individual JSON property options."""
+    raw_properties = ctx.flag("properties")
+    property_options = [(name[2:], value) for name, value in ctx._options if name.startswith("p.")]
+    malformed = any(name == "p" for name, _ in ctx._options)
+    if malformed:
+        raise CLIError("use --p.KEY=VALUE for individual properties")
+    if raw_properties is not None and property_options and not allow_combined:
+        raise CLIError("--properties cannot be combined with --p.KEY options")
+
+    updates: dict[str, object] = {}
+    for key, raw_value in property_options:
+        if not key:
+            raise CLIError("property option requires a key: --p.KEY=VALUE")
+        if key in updates:
+            raise CLIError(f"property supplied more than once: {key}")
+        if not isinstance(raw_value, str):
+            raise CLIError(f"--p.{key} requires a value")
+        try:
+            updates[key] = json.loads(raw_value)
+        except json.JSONDecodeError:
+            # Plain text is the convenient string form. JSON literals retain
+            # their native types, while other unquoted text becomes a string.
+            updates[key] = raw_value
+
+    replacement = parse_properties(raw_properties)
+    if replacement is not None and property_options:
+        duplicate_keys = replacement.keys() & updates.keys()
+        if duplicate_keys:
+            raise CLIError(f"property filtered more than once: {', '.join(sorted(duplicate_keys))}")
+    return replacement, updates or None
+
+
+def matches_property_filter(
+    properties: dict, filters: dict | None, *, case_insensitive_strings: bool = False,
+) -> bool:
+    if not filters:
+        return True
+    for key, expected in filters.items():
+        if key not in properties:
+            return False
+        actual = properties.get(key)
+        if case_insensitive_strings and isinstance(actual, str) and isinstance(expected, str):
+            if actual.casefold() != expected.casefold():
+                return False
+        elif actual != expected:
+            return False
+    return True
 
 
 def parse_properties(raw: object | None) -> dict | None:
