@@ -1,6 +1,6 @@
 [project] # Declares the package's standard project metadata.
 name = "graph-lcb" # Distribution name users give to pip when installing the package.
-version = "0.2.0" # Current release version, following the usual MAJOR.MINOR.PATCH format.
+version = "0.2.1" # Current release version, following the usual MAJOR.MINOR.PATCH format.
 description = "A local CLI for managing JSON-backed graphs with customizable entity and edge types." # Short description shown by package indexes.
 readme = "README.md" # Uses this file as the long package description.
 requires-python = ">=3.10" # Required for dataclass slots and PEP 604 union type syntax.

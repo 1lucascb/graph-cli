@@ -14,7 +14,7 @@ working directory.
 Requires Python 3.10 or newer and Git. Install the CLI directly from GitHub with:
 
 ```sh
-pip install graphcli
+pip install graph-lcb
 ```
 
 This installs the `graph` command. To install the test dependencies and run the
