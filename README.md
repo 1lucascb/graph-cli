@@ -288,6 +288,20 @@ records with `source` or `target` fields are treated as edges and other records
 as nodes. The `kind` marker is removed before the record is stored. Edge records
 may omit `id`, in which case an ID is generated.
 
+For example, this JSONL file contains two API nodes followed by two
+directed `CALLS` edges. It uses the starter contracts created by `graph init`:
+
+```jsonl
+{"kind":"node","id":"web-api","type":"API","name":"Web API","properties":{"language":"Python"}}
+{"kind":"node","id":"billing-api","type":"API","name":"Billing API","properties":{"language":"Python"}}
+{"kind":"edge","type":"CALLS","source":"web-api","target":"billing-api","description":"Requests payment processing.","properties":{"protocol":"HTTP"}}
+{"kind":"edge","type":"CALLS","source":"billing-api","target":"web-api","description":"Returns the payment result.","properties":{"protocol":"HTTP"}}
+```
+
+Save the lines as `records.jsonl` and import them with `graph import records.jsonl`.
+Each JSON object must be on its own line, and edge endpoints must match node
+IDs in the graph or in the same file.
+
 All input is parsed and validated against the current contracts and the
 existing graph before anything is written. Nodes are staged before edges, so
 an edge may refer to a node appearing later in the input. Any invalid line or
