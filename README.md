@@ -11,7 +11,7 @@ working directory.
 
 ## Install
 
-Requires Python 3.10 or newer and Git. Install the CLI directly from GitHub with:
+Requires Python 3.10 or newer. Install the CLI directly with:
 
 ```sh
 pip install graph-lcb
@@ -63,6 +63,11 @@ When using an AI agent to explore this graph, start with the
 [graph-query skill](docs/skills/graph-query/SKILL.md). It guides agents to check
 the contract, confirm node IDs, and choose between `nodes`, `edges`, `traverse`,
 and `path` queries.
+
+For a thorough, evidence-backed map of a codebase, use the
+[codebase-mapping skill](docs/skills/codebase-mapping/SKILL.md). It tracks file
+coverage and pending work in a durable `progress.txt` so mapping can resume
+across sessions.
 
 You can create additional skills for the tasks and knowledge your project needs,
 such as documenting sources, mapping systems, or exploring flows, processes,
