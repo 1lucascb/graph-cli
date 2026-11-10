@@ -585,6 +585,7 @@ graph traverse NODE_ID
                [--direction in|out|both]
                [--edge TYPE[,TYPE...]]
                [--limit N]
+               [--fields FIELD[,FIELD...]]
 ```
 
 Perform a breadth-first traversal from one existing node.
@@ -596,6 +597,7 @@ Perform a breadth-first traversal from one existing node.
 | `--direction in|out|both` | Direction to follow at every hop; default `both`. `in` follows incoming edges to their source; `out` follows outgoing edges to their target. |
 | `--edge TYPE[,TYPE...]` | Optional set of allowed edge types. Names are case-insensitive and must exist in the edge contract. |
 | `--limit N` | Optional positive maximum number of reached nodes, excluding the anchor. Applied as nodes are reached. |
+| `--fields FIELD[,FIELD...]` | Return node objects with selected fields instead of compact `[id, type, name]` tuples. Allowed: `id`, `type`, `name`, `description`, `properties`, `metadata`, `evidences`. |
 
 The result is compact JSON:
 
@@ -607,7 +609,7 @@ The result is compact JSON:
 }
 ```
 
-Node tuples are `[id, type, name]`; edge tuples are
+By default, node tuples are `[id, type, name]`; edge tuples are
 `[source_id, type, target_id, target_type]`. Edge tuples preserve the stored
 source-to-target orientation even when traversing `in`. The anchor is first;
 other nodes and edges are ordered deterministically. The edge list can include
@@ -622,6 +624,7 @@ Example:
 
 ```sh
 graph traverse orders-api --depth=2 --direction=out --edge=CALLS,PUBLISHES --limit=20
+graph traverse orders-api --fields=id,name,description
 ```
 
 ### `graph path`
@@ -632,6 +635,7 @@ graph path SOURCE_ID TARGET_ID
            [--edge TYPE[,TYPE...]]
            [--max-depth N]
            [--limit N]
+           [--fields FIELD[,FIELD...]]
 ```
 
 Find simple paths between two existing nodes. A simple path does not visit a
@@ -645,10 +649,11 @@ node more than once.
 | `--edge TYPE[,TYPE...]` | Optional set of allowed edge types. Names are case-insensitive and must exist. |
 | `--max-depth N` | Optional non-negative maximum hop count. If omitted, the search allows up to the number of graph nodes minus one hops. `0` permits only a zero-hop path when source and target are the same node. |
 | `--limit N` | Positive maximum number of paths to return; default `1`. |
+| `--fields FIELD[,FIELD...]` | Return node objects with selected fields instead of compact `[id, type, name]` tuples. Allowed: `id`, `type`, `name`, `description`, `properties`, `metadata`, `evidences`. |
 
 Paths are ordered shortest first with deterministic tie-breaking. The result
-has `paths` and `truncated` fields. Each path contains `nodes` as
-`[id, type, name]` tuples, `edges` as
+has `paths` and `truncated` fields. By default each path contains `nodes` as
+`[id, type, name]` tuples; `--fields` selects fields for node objects. `edges` are
 `[edge_id, source_id, type, target_id, target_type]` tuples, and `hops`.
 If there is no route, `paths` is empty. When source and target are the same
 node, a zero-hop path is valid. `truncated` means another path was found
@@ -660,6 +665,7 @@ Example:
 ```sh
 graph path orders-api database --direction=both --edge=CALLS,READS \
   --max-depth=6 --limit=5
+graph path orders-api database --fields=id,name,description
 ```
 
 Path search can enumerate many candidate simple paths in a dense graph. Use

@@ -1,8 +1,28 @@
 from cli import CLIError, Context
 from graphs.engine import Graph, GraphError
-from commands.common import cli, emit, positive_limit, parse_edge_types
+from commands.common import cli, emit, positive_limit, parse_edge_types, parse_fields
 
-@cli.handler("traverse", "Traverse from a node: traverse NODE_ID [--depth N] [--direction in|out|both] [--edge TYPE[,TYPE...]] [--limit N]")
+NODE_FIELDS = {"id", "type", "name", "description", "properties", "metadata", "evidences"}
+
+
+def expand_node_fields(graph: Graph, result: dict, fields: list[str] | None, *, paths: bool = False) -> None:
+    """Replace compact node tuples with selected node fields when requested."""
+    if fields is None:
+        return
+    data = graph.load()
+    nodes = {node.id: node for node in data["nodes"]}
+
+    def project(tuple_row: list) -> dict:
+        node = nodes[tuple_row[0]]
+        return {field: getattr(node, field) for field in fields}
+
+    if paths:
+        for path_result in result["paths"]:
+            path_result["nodes"] = [project(row) for row in path_result["nodes"]]
+    else:
+        result["nodes"] = [project(row) for row in result["nodes"]]
+
+@cli.handler("traverse", "Traverse from a node: traverse NODE_ID [--depth N] [--direction in|out|both] [--edge TYPE[,TYPE...]] [--limit N] [--fields FIELD,...]")
 def traverse(ctx: Context) -> None:
     if len(ctx.args) != 1:
         raise CLIError("traverse requires exactly one NODE_ID positional argument")
@@ -30,12 +50,14 @@ def traverse(ctx: Context) -> None:
     if direction is not None and not isinstance(direction, str):
         raise CLIError("--direction requires in, out, or both")
     graph = Graph()
+    fields = parse_fields(ctx.flag("fields"), NODE_FIELDS)
     edge_types = parse_edge_types(ctx.flag("edge"), graph)
     result = graph.traverse(anchor_id, depth=depth, direction=direction,
                               edge_types=edge_types, limit=limit)
+    expand_node_fields(graph, result, fields)
     emit(result)
 
-@cli.handler("path", "Find shortest paths between nodes: path SOURCE TARGET [--direction out|in|both] [--edge TYPE[,TYPE...]] [--max-depth N] [--limit N]")
+@cli.handler("path", "Find shortest paths between nodes: path SOURCE TARGET [--direction out|in|both] [--edge TYPE[,TYPE...]] [--max-depth N] [--limit N] [--fields FIELD,...]")
 def path(ctx: Context) -> None:
     if len(ctx.args) != 2:
         raise CLIError("path requires exactly SOURCE and TARGET")
@@ -44,6 +66,7 @@ def path(ctx: Context) -> None:
     if not isinstance(direction, str):
         raise CLIError("--direction requires out, in, or both")
     graph = Graph()
+    fields = parse_fields(ctx.flag("fields"), NODE_FIELDS)
     edge_types = parse_edge_types(ctx.flag("edge"), graph)
 
     def non_negative_option(name: str, default: int) -> int:
@@ -66,4 +89,5 @@ def path(ctx: Context) -> None:
     limit = positive_limit(ctx.flag("limit"), default=1)
     result = graph.find_paths(source, target, direction=direction, edge_types=edge_types,
                               max_depth=max_depth, limit=limit)
+    expand_node_fields(graph, result, fields, paths=True)
     emit(result)
