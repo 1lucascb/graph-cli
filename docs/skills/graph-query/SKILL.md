@@ -34,12 +34,14 @@ workspace you want to inspect.
    - Use `graph edges --from=NODE_ID`, `--to=NODE_ID`, and `--type=TYPE` to
      inspect direct connections or filter edges.
    - Use `graph traverse NODE_ID` to explore a neighborhood breadth-first.
+     Add `--fields=id,type,name,description` when node descriptions are useful.
      Set `--depth` to bound the number of hops, `--direction=in|out|both` to
      control traversal direction, and `--edge=TYPE[,TYPE...]` to focus on
      specific relationships. Traversal defaults to depth 1 and direction
      `both`.
    - Use `graph path SOURCE_ID TARGET_ID` to find routes between two nodes.
      Path search defaults to outgoing edges and returns one shortest path.
+     Add `--fields=id,type,name,description` to include node descriptions.
      Consider `--direction=both` if the intended relationship may be followed
      in either direction.
 
