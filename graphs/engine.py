@@ -654,8 +654,13 @@ class Graph:
                 violations.append({"code": "invalid_property_type", "message": f"property {key} must be {expected}"})
         return violations
 
-    def validate(self) -> dict[str, Any]:
-        """Report contract and graph-store violations without changing files."""
+    def validate(self, candidate_store: Any = None) -> dict[str, Any]:
+        """Report contract and graph-store violations without changing files.
+
+        When candidate_store is provided, validate it in place of the saved
+        graph. This is used by import to validate a complete staged graph before
+        writing any part of it.
+        """
         errors: list[dict[str, Any]] = []
 
         def report(kind: str, code: str, message: str, record_id: str | None = None,
@@ -673,12 +678,15 @@ class Graph:
         # Graph.__init__ loads both contract files before this method is called.
         entity_types = {name.casefold(): name for name in self.entities}
         edge_types = {name.casefold(): name for name in self.edge_types}
-        try:
-            raw_text = self.path.read_text(encoding="utf-8") if self.path.exists() else '{"nodes": [], "edges": []}'
-            store = json.loads(raw_text)
-        except (OSError, json.JSONDecodeError) as exc:
-            return {"valid": False, "errors": [{"kind": "store", "code": "invalid_record", "message": f"cannot read graph store: {exc}"}],
-            "summary": {"nodes": 0, "edges": 0, "errors": 1}, "unavailable": True}
+        if candidate_store is None:
+            try:
+                raw_text = self.path.read_text(encoding="utf-8") if self.path.exists() else '{"nodes": [], "edges": []}'
+                store = json.loads(raw_text)
+            except (OSError, json.JSONDecodeError) as exc:
+                return {"valid": False, "errors": [{"kind": "store", "code": "invalid_record", "message": f"cannot read graph store: {exc}"}],
+                "summary": {"nodes": 0, "edges": 0, "errors": 1}, "unavailable": True}
+        else:
+            store = candidate_store
         if not isinstance(store, dict):
             store = {}
             report("store", "invalid_record", "graph store must be a JSON object")
