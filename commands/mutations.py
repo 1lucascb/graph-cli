@@ -9,22 +9,25 @@ def edit_record(ctx: Context) -> None:
     graph = Graph()
     if target == "node":
         if ctx.flag("id") is not None:
-            raise CLIError("edit node ID is positional: edit node ID --name=...")
+            raise CLIError("edit node ID is positional: edit node ID --name=... or --description=...")
         if len(ctx.args) != 2:
-            raise CLIError("use edit node ID with --name, --properties, and/or --evidences")
+            raise CLIError("use edit node ID with --name, --description, --properties, and/or --evidences")
         reference = ctx.positional(1)
         name = ctx.flag("name")
+        description = ctx.flag("description")
         raw_properties = ctx.flag("properties")
         raw_evidences = ctx.flag("evidences")
-        if name is None and raw_properties is None and raw_evidences is None:
-            raise CLIError("provide --name, --properties, and/or --evidences")
+        if name is None and description is None and raw_properties is None and raw_evidences is None:
+            raise CLIError("provide --name, --description, --properties, and/or --evidences")
         if name is not None and not isinstance(name, str):
             raise CLIError("--name requires a value")
+        if description is not None and not isinstance(description, str):
+            raise CLIError("--description requires text")
         parsed_properties = parse_properties(raw_properties)
         parsed_evidences = None
         if raw_evidences is not None:
             parsed_evidences = evidences(raw_evidences)
-        result = graph.edit_node(reference, name=name, properties=parsed_properties, evidences=parsed_evidences)
+        result = graph.edit_node(reference, name=name, description=description, properties=parsed_properties, evidences=parsed_evidences)
     elif target == "edge":
         if ctx.flag("id") is not None:
             raise CLIError("edit edge ID is positional: edit edge ID --description=...")

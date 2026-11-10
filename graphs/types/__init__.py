@@ -14,6 +14,7 @@ class Node:
     properties: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, str] = field(default_factory=dict)
     evidences: list[dict[str, Any]] = field(default_factory=list)
+    description: str = ""
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> Node:
@@ -22,6 +23,8 @@ class Node:
         for key in ("id", "type", "name"):
             if not isinstance(value.get(key), str):
                 raise ValueError(f"node {key} must be a string")
+        if not isinstance(value.get("description", ""), str):
+            raise ValueError("node description must be a string")
         if not isinstance(value.get("properties", {}), dict):
             raise ValueError("node properties must be an object")
         if not isinstance(value.get("metadata", {}), dict):
@@ -32,6 +35,7 @@ class Node:
             raise ValueError("node evidences must be a list of objects")
         return cls(
             id=value["id"], type=value["type"], name=value["name"],
+            description=value.get("description", ""),
             properties=value.get("properties", {}), metadata=value.get("metadata", {}),
             evidences=value.get("evidences", []),
         )

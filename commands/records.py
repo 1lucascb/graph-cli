@@ -5,10 +5,13 @@ from commands.common import (
     emit, positive_limit,
 )
 
-@cli.handler("add-node", "Add a node: add-node ID NAME TYPE [--properties JSON] [--evidences JSON_OBJECTS_ARRAY]")
+@cli.handler("add-node", "Add a node: add-node ID NAME TYPE [--description TEXT] [--properties JSON] [--evidences JSON_OBJECTS_ARRAY]")
 def add_node(ctx: Context) -> None:
     evidence_values = evidences(ctx.flag("evidences", default="[]"))
-    node = Graph().add_node(ctx.positional(0), ctx.positional(1), ctx.positional(2), properties(ctx), evidence_values)
+    description = ctx.flag("description", default="")
+    if not isinstance(description, str):
+        raise CLIError("--description requires text")
+    node = Graph().add_node(ctx.positional(0), ctx.positional(1), ctx.positional(2), properties(ctx), evidence_values, description)
     emit(node)
 
 @cli.handler("add-edge", "Add an edge: add-edge SOURCE_ID EDGE_TYPE TARGET_ID [--description TEXT] [--properties JSON] [--evidences JSON_OBJECTS_ARRAY]")
@@ -28,7 +31,7 @@ def list_nodes(ctx: Context) -> None:
 
     reference = ctx.positional(0, None)
     property_filter = ctx.flag("properties")
-    fields = parse_fields(ctx.flag("fields"), {"id", "type", "name", "properties", "metadata", "evidences"})
+    fields = parse_fields(ctx.flag("fields"), {"id", "type", "name", "description", "properties", "metadata", "evidences"})
     if reference is not None:
         if property_filter is not None:
             raise CLIError("--properties cannot be combined with a node ID")

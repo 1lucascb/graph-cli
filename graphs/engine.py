@@ -162,6 +162,7 @@ class Graph:
     def add_node(
         self, node_id: str, name: str, kind: str, properties: dict[str, Any],
         evidences: list[dict[str, Any]] | None = None,
+        description: str = "",
     ) -> Node:
         requested_kind = kind
         kind = self._canonical_type(kind, self.entities)
@@ -174,12 +175,14 @@ class Graph:
             evidences = []
         if not isinstance(evidences, list) or any(not isinstance(item, dict) for item in evidences):
             raise GraphError("evidences must be a list of objects")
+        if not isinstance(description, str):
+            raise GraphError("description must be a string")
         data = self.load()
         if any(node.id == node_id for node in data["nodes"]):
             raise GraphError(f"node id already exists: {node_id}")
         now = self.__now_datetime()
         node = Node(
-            id=node_id, type=kind, name=name, properties=properties,
+            id=node_id, type=kind, name=name, description=description, properties=properties,
             metadata={"created_at": now, "updated_at": now}, evidences=evidences,
         )
         data["nodes"].append(node)
@@ -234,6 +237,7 @@ class Graph:
         return edge
 
     def edit_node(self, reference: str, *, name: str | None = None,
+                  description: str | None = None,
                   properties: dict[str, Any] | None = None,
                   evidences: list[dict[str, Any]] | None = None) -> Node:
         data = self.load()
@@ -251,6 +255,10 @@ class Graph:
         )
         if name is not None:
             node.name = name
+        if description is not None:
+            if not isinstance(description, str):
+                raise GraphError("description must be a string")
+            node.description = description
         if properties is not None:
             node.properties = properties
         if evidences is not None:

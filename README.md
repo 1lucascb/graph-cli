@@ -279,7 +279,8 @@ code `4`; validation does not initialize or repair anything.
 ### `graph add-node`
 
 ```text
-graph add-node ID NAME TYPE [--properties JSON] [--evidences JSON_ARRAY]
+graph add-node ID NAME TYPE [--description TEXT]
+              [--properties JSON] [--evidences JSON_ARRAY]
 ```
 
 Create a node and append it to `.graph/graph.json`.
@@ -289,12 +290,13 @@ Create a node and append it to `.graph/graph.json`.
 | `ID` | Required, unique node identifier. Must match `^[a-z0-9][a-z0-9._-]*$`: the first character is a lowercase ASCII letter or digit; later characters may also include `.`, `_`, and `-`. |
 | `NAME` | Required display name, stored as supplied. |
 | `TYPE` | Required entity type from `entities.json`; lookup is case-insensitive and the stored type uses the contract's canonical spelling. |
+| `--description TEXT` | Optional free-form node description; defaults to the empty string. |
 | `--properties JSON` | Complete properties object. Defaults to `{}`. Supplied keys must be defined in the entity contract, values must have the declared JSON type, and all required properties must be present. |
 | `--evidences JSON_ARRAY` | Optional JSON array in which every item must be an object. Defaults to `[]`; evidence fields and nested values are user-defined. |
 
 The node's metadata receives UTC `created_at` and `updated_at` timestamps.
 The output is the complete node record, including `id`, `type`, `name`,
-`properties`, `metadata`, and `evidences`.
+`description`, `properties`, `metadata`, and `evidences`.
 
 Example:
 
@@ -364,7 +366,7 @@ Get one node by ID or list/filter nodes.
 | `--suffix TEXT` | Case-insensitive suffix match against node `name`. |
 | `--contains TEXT` | Case-insensitive substring match against node `name`. |
 | `--limit N` | Optional positive integer. Applied after filtering; `1` or greater. |
-| `--fields FIELD[,FIELD...]` | Return only the selected fields, in the requested order. Allowed fields: `id`, `type`, `name`, `properties`, `metadata`, `evidences`. Not valid with an ID lookup. |
+| `--fields FIELD[,FIELD...]` | Return only the selected fields, in the requested order. Allowed fields: `id`, `type`, `name`, `description`, `properties`, `metadata`, `evidences`. Not valid with an ID lookup. |
 
 All list filters combine with AND, except multiple values within `--type`,
 which combine with OR. List output is an object containing `rows`, `total`,
@@ -425,7 +427,8 @@ graph edges 6c7f7d2c-22f0-49d2-a7f3-37d9b8cb0988
 
 ```text
 graph edit node ID
-            [--name TEXT] [--properties JSON] [--evidences JSON_ARRAY]
+            [--name TEXT] [--description TEXT]
+            [--properties JSON] [--evidences JSON_ARRAY]
 
 graph edit edge EDGE_ID
             [--description TEXT] [--properties JSON] [--evidences JSON_ARRAY]
@@ -438,6 +441,7 @@ For nodes:
 
 - `ID` is the existing node ID.
 - `--name TEXT` replaces the display name.
+- `--description TEXT` replaces the optional description; an empty value clears it.
 - `--properties JSON` replaces the entire properties object, not just selected
   keys. The resulting object must satisfy the current entity contract.
 - `--evidences JSON_ARRAY` replaces the complete evidence list; `[]` clears it.

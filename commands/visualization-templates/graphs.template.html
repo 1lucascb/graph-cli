@@ -651,6 +651,7 @@
                     body.appendChild(sub);
                     if (types.entities[n.type]) body.appendChild(el('p', 'muted', types.entities[n.type]));
                     head.append(dot, body); box.appendChild(head);
+                    if (n.description) box.appendChild(section('Description', el('div', null, n.description)));
                     box.appendChild(section('Properties', kv(n.properties)));
                     const list = n.edges.filter(e => !e.hidden), conn = el('div');
                     if (!list.length) conn.appendChild(el('div', 'muted', 'None'));
