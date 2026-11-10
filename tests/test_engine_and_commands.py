@@ -247,6 +247,149 @@ def test_cli_commands_add_and_delete_graph_records(tmp_path: Path) -> None:
     assert deleted["deleted_edge"]["source"] == "orders"
     assert deleted["deleted_edge"]["target"] == "stock"
 
+
+def test_cli_property_flags_add_typed_node_and_edge_properties(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_contracts(workspace / ".graph")
+    entities_path = workspace / ".graph" / "entities.json"
+    entities = json.loads(entities_path.read_text(encoding="utf-8"))
+    entities["API"]["properties"].update({
+        "retries": {"type": "integer", "required": False},
+        "enabled": {"type": "boolean", "required": False},
+    })
+    entities_path.write_text(json.dumps(entities), encoding="utf-8")
+    edges_path = workspace / ".graph" / "edges.json"
+    edge_contracts = json.loads(edges_path.read_text(encoding="utf-8"))
+    edge_contracts["CALLS"]["properties"]["weight"] = {"type": "number", "required": False}
+    edges_path.write_text(json.dumps(edge_contracts), encoding="utf-8")
+
+    add_node = _run_graph(
+        workspace, "add-node", "orders", "Orders", "API",
+        "--p.language=python", "--p.retries=3", "--p.enabled=true",
+    )
+    add_second = _run_graph(
+        workspace, "add-node", "stock", "Stock", "API", "--p.language=python",
+    )
+
+    assert add_node.returncode == 0, add_node.stderr
+    assert json.loads(add_node.stdout)["properties"] == {
+        "language": "python", "retries": 3, "enabled": True,
+    }
+    assert add_second.returncode == 0, add_second.stderr
+
+    add_edge = _run_graph(
+        workspace, "add-edge", "orders", "CALLS", "stock",
+        "--p.protocol=https", "--p.weight=1.5",
+    )
+
+    assert add_edge.returncode == 0, add_edge.stderr
+    edge = json.loads(add_edge.stdout)
+    assert edge["properties"] == {"protocol": "https", "weight": 1.5}
+
+
+def test_cli_property_flags_patch_and_validate_node_and_edge_properties(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_contracts(workspace / ".graph")
+    entities_path = workspace / ".graph" / "entities.json"
+    entities = json.loads(entities_path.read_text(encoding="utf-8"))
+    entities["API"]["properties"]["retries"] = {"type": "integer", "required": False}
+    entities_path.write_text(json.dumps(entities), encoding="utf-8")
+    edges_path = workspace / ".graph" / "edges.json"
+    edge_contracts = json.loads(edges_path.read_text(encoding="utf-8"))
+    edge_contracts["CALLS"]["properties"]["weight"] = {"type": "number", "required": False}
+    edges_path.write_text(json.dumps(edge_contracts), encoding="utf-8")
+    graph = Graph(workspace / ".graph")
+    graph.add_node("orders", "Orders", "API", {"language": "python", "retries": 1})
+    graph.add_node("stock", "Stock", "API", {"language": "python"})
+    edge = graph.add_edge("orders", "CALLS", "stock", {"protocol": "https", "weight": 1.5})
+
+    edit_node = _run_graph(workspace, "edit", "node", "orders", "--p.retries=4")
+    invalid_node = _run_graph(workspace, "edit", "node", "orders", '--p.language=4')
+    mixed_node = _run_graph(
+        workspace, "edit", "node", "orders", '--properties={"language":"python"}',
+        "--p.retries=4",
+    )
+    edit_edge = _run_graph(workspace, "edit", "edge", edge.id, "--p.weight=2")
+    invalid_edge = _run_graph(workspace, "edit", "edge", edge.id, "--p.weight=not-json")
+
+    assert edit_node.returncode == 0, edit_node.stderr
+    assert json.loads(edit_node.stdout)["properties"] == {"language": "python", "retries": 4}
+    assert invalid_node.returncode != 0
+    assert "property language must be string" in invalid_node.stderr
+    assert mixed_node.returncode != 0
+    assert "cannot be combined" in mixed_node.stderr
+    assert edit_edge.returncode == 0, edit_edge.stderr
+    assert json.loads(edit_edge.stdout)["properties"] == {"protocol": "https", "weight": 2}
+    assert invalid_edge.returncode != 0
+    assert "property weight must be number" in invalid_edge.stderr
+
+
+def test_cli_nodes_p_property_filter_is_case_insensitive_and_composable(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_contracts(workspace / ".graph")
+    entities_path = workspace / ".graph" / "entities.json"
+    entities = json.loads(entities_path.read_text(encoding="utf-8"))
+    entities["API"]["properties"]["runtime"] = {"type": "string", "required": False}
+    entities_path.write_text(json.dumps(entities), encoding="utf-8")
+    graph = Graph(workspace / ".graph")
+    graph.add_node("one", "One", "API", {"language": "Python", "runtime": "FastAPI"})
+    graph.add_node("two", "Two", "API", {"language": "PYTHON", "runtime": "Flask"})
+    graph.add_node("three", "Three", "API", {"language": "Go", "runtime": "Gin"})
+
+    insensitive = _run_graph(workspace, "nodes", "--p.language=python", "--fields=id")
+    exact = _run_graph(workspace, "nodes", '--properties={"language":"Python"}', "--fields=id")
+    combined = _run_graph(
+        workspace, "nodes", '--properties={"language":"Python"}',
+        "--p.runtime=fastapi", "--fields=id",
+    )
+    duplicate = _run_graph(
+        workspace, "nodes", '--properties={"language":"Python"}',
+        "--p.language=python", "--fields=id",
+    )
+
+    assert insensitive.returncode == 0, insensitive.stderr
+    assert json.loads(insensitive.stdout)["rows"] == [{"id": "one"}, {"id": "two"}]
+    assert exact.returncode == 0, exact.stderr
+    assert json.loads(exact.stdout)["rows"] == [{"id": "one"}]
+    assert combined.returncode == 0, combined.stderr
+    assert json.loads(combined.stdout)["rows"] == [{"id": "one"}]
+    assert duplicate.returncode != 0
+    assert "filtered more than once" in duplicate.stderr
+
+
+def test_cli_edges_p_property_filter_is_case_insensitive_and_composable(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_contracts(workspace / ".graph")
+    edges_path = workspace / ".graph" / "edges.json"
+    edge_contracts = json.loads(edges_path.read_text(encoding="utf-8"))
+    edge_contracts["CALLS"]["properties"]["weight"] = {"type": "number", "required": False}
+    edges_path.write_text(json.dumps(edge_contracts), encoding="utf-8")
+    graph = Graph(workspace / ".graph")
+    graph.add_node("source", "Source", "API", {"language": "python"})
+    graph.add_node("target", "Target", "API", {"language": "python"})
+    graph.add_edge("source", "CALLS", "target", {"protocol": "HTTPS", "weight": 1}, description="secure")
+    graph.add_edge("source", "CALLS", "target", {"protocol": "http", "weight": 2}, description="plain")
+
+    insensitive = _run_graph(workspace, "edges", "--p.protocol=https", "--fields=properties")
+    exact = _run_graph(
+        workspace, "edges", '--properties={"protocol":"HTTPS"}', "--fields=properties",
+    )
+    combined = _run_graph(
+        workspace, "edges", '--properties={"weight":1}', "--p.protocol=https",
+        "--fields=properties",
+    )
+
+    assert insensitive.returncode == 0, insensitive.stderr
+    assert json.loads(insensitive.stdout)["rows"] == [{"properties": {"protocol": "HTTPS", "weight": 1}}]
+    assert exact.returncode == 0, exact.stderr
+    assert json.loads(exact.stdout)["rows"] == [{"properties": {"protocol": "HTTPS", "weight": 1}}]
+    assert combined.returncode == 0, combined.stderr
+    assert json.loads(combined.stdout)["rows"] == [{"properties": {"protocol": "HTTPS", "weight": 1}}]
+
 def test_ambiguous_cli_edge_delete_returns_two_without_deleting(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
