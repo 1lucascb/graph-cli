@@ -64,10 +64,10 @@ When using an AI agent to explore this graph, start with the
 the contract, confirm node IDs, and choose between `nodes`, `edges`, `traverse`,
 and `path` queries.
 
-For a thorough, evidence-backed map of a codebase, use the
-[codebase-mapping skill](docs/skills/codebase-mapping/SKILL.md). It tracks file
-coverage and pending work in a durable `progress.txt` so mapping can resume
-across sessions.
+To build a thorough, evidence-backed map of a codebase, use the
+[graph-batch-import skill](docs/skills/graph-batch-import/SKILL.md). It guides
+agents to gather evidence, prepare one JSONL batch, dry-run it, and import the
+complete batch atomically.
 
 You can create additional skills for the tasks and knowledge your project needs,
 such as documenting sources, mapping systems, or exploring flows, processes,
