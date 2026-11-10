@@ -57,6 +57,21 @@ The contracts and graph store are resolved relative to the process's current
 working directory, not the location of the installed CLI. Run commands from
 the project whose `.graph/` you intend to access.
 
+## AI agents and skills
+
+When using an AI agent to explore this graph, start with the
+[graph-query skill](docs/skills/graph-query/SKILL.md). It guides agents to check
+the contract, confirm node IDs, and choose between `nodes`, `edges`, `traverse`,
+and `path` queries.
+
+You can create additional skills for the tasks and knowledge your project needs,
+such as documenting sources, mapping systems, or exploring flows, processes,
+infrastructure, and knowledge bases. The graph is flexible: define domain
+entities and relationships in the contracts, add typed properties to capture
+the details you need, and attach evidence objects to nodes or edges to record
+supporting sources or locators. Skills can then guide agents on how to interpret
+that model, gather evidence, and query it consistently.
+
 ## Contract format
 
 An entity contract maps each entity type to a definition with a `properties`
