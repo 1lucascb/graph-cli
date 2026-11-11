@@ -2,7 +2,8 @@ from pathlib import Path
 
 from cli import CLIError, Context
 from graphs.engine import Graph, GraphError, GraphNotInitializedError, InvalidContractError
-from commands.common import cli, emit, starter_contracts
+from commands.common import cli, emit, positive_limit, starter_contracts
+from graphs.status import CHECKS, compute_status
 
 @cli.handler("validate", "Validate stored graph records against the current contracts (read-only).")
 def validate_graph(ctx: Context) -> int:
@@ -36,6 +37,55 @@ def validate_graph(ctx: Context) -> int:
     unavailable = result.pop("unavailable", False)
     emit(result)
     return 4 if unavailable else 0 if result["valid"] else 3
+
+
+@cli.handler("status", "Summarize graph totals and selected quality findings: status [--check=orphans,no-evidence,no-description,components] [--limit N] [--strict]")
+def graph_status(ctx: Context) -> int:
+    if ctx.args:
+        raise CLIError("status accepts no positional arguments")
+    option_names = {name for name, _ in ctx._options}
+    unknown_options = option_names - {"check", "limit", "strict"}
+    if unknown_options:
+        raise CLIError(f"unknown status option: {', '.join(sorted(unknown_options))}")
+
+    raw_checks = ctx.flag("check")
+    if raw_checks is None:
+        checks = list(CHECKS)
+    elif isinstance(raw_checks, str):
+        checks = [item.strip() for item in raw_checks.split(",")]
+        if not all(checks):
+            raise CLIError(f"--check requires comma-separated values: {', '.join(CHECKS)}")
+        invalid = sorted(set(checks) - set(CHECKS))
+        if invalid:
+            raise CLIError(f"unknown --check value: {', '.join(invalid)}; valid checks: {', '.join(CHECKS)}")
+    else:
+        raise CLIError("--check requires comma-separated values")
+
+    strict = ctx.flag("strict")
+    if strict is not None and strict is not True:
+        raise CLIError("--strict does not accept a value")
+    limit = positive_limit(ctx.flag("limit"), default=10)
+
+    graph = Graph(allow_invalid_contracts=True)
+    data = graph.load()
+    result = compute_status(graph.entities, graph.edge_types, data, checks, limit)
+    result["valid"] = graph.validate()["valid"]
+    emit(result)
+
+    has_findings = any(
+        (check == "components" and result.get("components", {}).get("count", 0) > 1)
+        or (check == "orphans" and result.get("orphans", {}).get("count", 0) > 0)
+        or (check == "no-evidence" and (
+            result.get("no_evidence", {}).get("nodes", {}).get("count", 0) > 0
+            or result.get("no_evidence", {}).get("edges", {}).get("count", 0) > 0
+        ))
+        or (check == "no-description" and (
+            result.get("no_description", {}).get("nodes", {}).get("count", 0) > 0
+            or result.get("no_description", {}).get("edges", {}).get("count", 0) > 0
+        ))
+        for check in checks
+    )
+    return 3 if strict is True and has_findings else 0
 
 @cli.handler("contract", "Show entity and edge contracts: contract [entities|edges] [--compact]")
 def show_schema(ctx: Context) -> None:

@@ -9,6 +9,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TypeVar, overload
 
+from .help_texts import HELP_TEXTS
+
 __all__ = ["CLIError", "Context", "CLI"]
 
 _MISSING = object()
@@ -76,6 +78,7 @@ class Context:
 class _Handler:
     description: str
     callback: Callable[[Context], int | None]
+    help_text: str | None = None
 
 
 class CLI:
@@ -84,6 +87,8 @@ class CLI:
     def __init__(self, prog: str | None = None) -> None:
         self.prog = prog
         self._handlers: dict[str, _Handler] = {}
+        # Detailed, stable command guides live in a small key-value catalog.
+        self._help_texts: dict[str, str] = dict(HELP_TEXTS)
         self._before_run_callbacks: list[Callable[[], None]] = []
 
     @overload
@@ -107,28 +112,37 @@ class CLI:
 
         return register(callback) if callback is not None else register
 
+    def set_help(self, name: str, help_text: str) -> None:
+        """Attach detailed help text to a command."""
+        self._help_texts[name] = help_text
+        if name in self._handlers:
+            handler = self._handlers[name]
+            self._handlers[name] = _Handler(handler.description, handler.callback, help_text)
+
     def new_handler(
         self,
         name: str,
         description: str,
         handler: Callable[[Context], int | None],
+        help_text: str | None = None,
     ) -> None:
         """Register a command and the function that handles it."""
         if not _COMMAND_PATTERN.fullmatch(name):
             raise ValueError(f"invalid command name: {name!r}")
         if name in {"help"} or name in self._handlers:
             raise ValueError(f"command already registered or reserved: {name!r}")
-        self._handlers[name] = _Handler(description, handler)
+        text = help_text or self._help_texts.get(name)
+        self._handlers[name] = _Handler(description, handler, text)
 
     def handler(
-        self, name: str, description: str
+        self, name: str, description: str, help_text: str | None = None
     ) -> Callable[[Callable[[Context], int | None]], Callable[[Context], int | None]]:
         """Register a command using a decorator and return its handler unchanged."""
 
         def register(
             callback: Callable[[Context], int | None],
         ) -> Callable[[Context], int | None]:
-            self.new_handler(name, description, callback)
+            self.new_handler(name, description, callback, help_text=help_text)
             return callback
 
         return register
@@ -229,6 +243,10 @@ class CLI:
         registered = self._handlers.get(command)
         if registered is None:
             return self._usage_error(f"unknown command: {command}", program)
+        help_text = self._help_texts.get(command) or registered.help_text
+        if help_text:
+            print(help_text.replace("graph ", f"{program} "), file=sys.stdout)
+            return 0
         print(f"Usage: {program} {command} [arguments]", file=sys.stdout)
         if registered.description:
             print(f"\n{registered.description}", file=sys.stdout)

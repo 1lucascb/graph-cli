@@ -18,13 +18,16 @@ to update.
 
 1. Clarify the subject, boundaries, level of detail, and source material to
    cover. Explore broadly before deciding that the map is complete.
-2. Run `graph contract` and read both entity and edge definitions. Record the
+2. Run `graph status` first to orient on graph size, disconnected components,
+   orphan nodes, and evidence/description gaps. Use `--strict` when those
+   selected findings should stop the workflow.
+3. Run `graph contract` and read both entity and edge definitions. Record the
    canonical type names, required properties, property types, and allowed edge
    endpoint types. Use only types and properties defined by the contract.
-3. Run `graph validate` to check the existing workspace before planning the
+4. Run `graph validate` to check the existing workspace before planning the
    batch. Resolve pre-existing validation issues or report them before
    importing; the import validates the resulting graph too.
-4. Explore existing records with `graph nodes`, `graph edges`, and focused
+5. Explore existing records with `graph nodes`, `graph edges`, and focused
    queries. Use `graph nodes --type=TYPE`, `--contains`, `--properties`, or
    `--p.KEY=VALUE` to find likely matches. Inspect candidates with
    `graph nodes NODE_ID` and inspect their relationships with `graph edges`,
