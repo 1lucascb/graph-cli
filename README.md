@@ -685,7 +685,7 @@ Perform a breadth-first traversal from one existing node.
 | --- | --- |
 | `NODE_ID` | Required anchor node; it is always included in the output. |
 | `--depth N` | Maximum number of edge hops; positive integer, default `1`. |
-| `--direction in|out|both` | Direction to follow at every hop; default `both`. `in` follows incoming edges to their source; `out` follows outgoing edges to their target. |
+| `--direction DIRECTION` | Direction to follow at every hop; default `both`. `in` follows incoming edges to their source; `out` follows outgoing edges to their target. |
 | `--edge TYPE[,TYPE...]` | Optional set of allowed edge types. Names are case-insensitive and must exist in the edge contract. |
 | `--limit N` | Optional positive maximum number of reached nodes, excluding the anchor. Applied as nodes are reached. |
 | `--fields FIELD[,FIELD...]` | Return node objects with selected fields instead of compact `[id, type, name]` tuples. Allowed: `id`, `type`, `name`, `description`, `properties`, `metadata`, `evidences`. |
