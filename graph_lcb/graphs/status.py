@@ -3,7 +3,7 @@
 from collections import Counter
 from collections.abc import Iterable
 
-from graphs.types import Edge, Node, compact_edge_tuple
+from graph_lcb.graphs.types import Edge, Node, compact_edge_tuple
 
 CHECKS = ("orphans", "no-evidence", "no-description", "components")
 

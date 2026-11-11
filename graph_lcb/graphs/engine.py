@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, TypedDict
 
-from graphs.types import Edge, Node, compact_edge_tuple
+from graph_lcb.graphs.types import Edge, Node, compact_edge_tuple
 
 NODE_ID_PATTERN = r"[a-z0-9][a-z0-9._-]*"
 

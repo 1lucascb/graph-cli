@@ -4,8 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from graphs.status import compute_status
-from graphs.types import Edge, Node
+from graph_lcb.graphs.status import compute_status
+from graph_lcb.graphs.types import Edge, Node
 
 
 ROOT = Path(__file__).resolve().parents[1]

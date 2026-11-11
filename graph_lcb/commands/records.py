@@ -1,6 +1,6 @@
-from cli import CLIError, Context
-from graphs.engine import Graph, GraphError
-from commands.common import (
+from graph_lcb.cli import CLIError, Context
+from graph_lcb.graphs.engine import Graph, GraphError
+from graph_lcb.commands.common import (
     cli, property_arguments, matches_property_filter, parse_fields, evidences, edge_response,
     emit, positive_limit,
 )

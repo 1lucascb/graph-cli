@@ -20,7 +20,16 @@ workspace you want to inspect.
      Type names are case-insensitive, but use the contract's canonical spelling
      in explanations.
 
+   Before creating a node, search for likely existing records with `graph
+   search TERM`. Search first to reduce duplicate nodes; use `graph nodes` when
+   you already know which structural filters to apply.
+
 2. **Find and confirm the nodes.**
+   - If you do not know which record or field contains the information, start
+     with `graph search TERM [TERM ...]`. Terms combine with AND by default;
+     use `--any` for OR, `--not TERM` to exclude matches, and `--in` or `--kind`
+     to narrow the scan. Search results are compact; inspect a candidate with
+     `graph nodes NODE_ID` or fetch an edge with `graph edges EDGE_ID`.
    - Use `graph nodes` to list nodes, or narrow the list with `--type`,
      `--contains`, `--prefix`, `--suffix`, or `--properties`.
    - Use `graph nodes NODE_ID` to inspect a matching node's full record.
@@ -97,6 +106,7 @@ there. The semicolon is not a command separator in `cmd.exe`.
 
 - `graph help COMMAND` for a concise command synopsis.
 - `graph contract` for type and endpoint definitions.
+- `graph search` to find records when their kind, field, or location is unknown.
 - The repository README sections for `graph nodes`, `graph edges`,
-  `graph traverse`, and `graph path` for the complete option and output
+  `graph search`, `graph traverse`, and `graph path` for the complete option and output
   reference.

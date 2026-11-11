@@ -179,6 +179,7 @@ graph <command> [arguments] [options]
 - `--help` or `-h` prints command help. `graph help` prints the command list;
   `graph help COMMAND` prints a concise technical guide with usage, behavior,
   return shape, and examples. The README remains the full reference.
+- `--version` prints the installed `graph-lcb` package version.
 - `--` stops option parsing. Arguments after it are treated as positional
   values.
 - Commands requiring a graph workspace expect `graph init` to have been run
@@ -196,6 +197,14 @@ graph help [COMMAND]
 Print the registered commands, or a concise technical guide for one command.
 Command guides include usage, behavior, output shape, and examples. These forms
 do not read or create graph files.
+
+### `graph --version`
+
+```text
+graph --version
+```
+
+Print the installed `graph-lcb` package version.
 
 ### `graph init`
 
@@ -526,6 +535,49 @@ graph edges --p.protocol=https
 graph edges --to=stock-api --properties '{"method":"GET"}' \
   --fields=id,type,source,target,target_type,description,properties
 graph edges 6c7f7d2c-22f0-49d2-a7f3-37d9b8cb0988
+```
+
+### `graph search`
+
+```text
+graph search TERM [TERM ...] [--any] [--not TERM ...]
+            [--in FIELD[,FIELD...]] [--kind nodes|edges|all]
+            [--type TYPE[,TYPE...]] [--regex] [--case-sensitive]
+            [--limit N] [--offset N] [--fields FIELD[,FIELD...]] [--snippets]
+```
+
+Use `graph nodes` and `graph edges` to filter by known structure; use `graph
+search` when you do not know where a phrase appears. Search defaults to
+case-insensitive substring matching and AND across terms. `--any` changes
+positive terms to OR; repeated `--not TERM` values exclude any matching record.
+`--regex` applies Python regular expressions to every term. `--case-sensitive`
+also applies to regex. `--in` accepts `id`, `name`, `type`, `description`,
+`properties`, `evidences`, `source`, and `target`; fields that do not apply to
+the selected record kind are ignored. `--type` filters by node or edge type.
+
+Rows are `["node",id,type,name,matched_fields]` and
+`["edge",source,type,target,matched_fields]`. With `--snippets`, a sixth
+element maps each matched field to an excerpt of up to about 60 characters.
+`--fields` returns arrays containing only the selected field values, in the
+requested order. Allowed fields are `id`, `type`, `name`, `source`, `target`,
+`description`, `properties`, `metadata`, and `evidences`. Fields that do not
+apply to a result kind are omitted.
+`--fields` cannot be combined with `--snippets`.
+The response includes `rows`, exact pre-page `total`, `truncated`, and
+`next_offset` (null when there is no next page). Results keep graph node order,
+followed by the normal sorted edge order. A value beginning with `--` must
+follow a standalone `--`, for example `graph search -- --literal`.
+
+Regex uses Python's `re` engine without a timeout. A pathological pattern can
+take a long time on large evidence text; search scans records linearly.
+
+Examples:
+
+```sh
+graph search payment billing --kind=nodes
+graph search --regex "payment|billing" stripe --any --limit=20
+graph search timeout --not retry --in=description,evidences --snippets
+graph search payment --fields=id,name,description
 ```
 
 ### `graph edit`

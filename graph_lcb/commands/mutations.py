@@ -1,7 +1,7 @@
 import sys
-from cli import CLIError, Context
-from graphs.engine import Graph, GraphError
-from commands.common import cli, evidences, edge_response, emit, property_arguments
+from graph_lcb.cli import CLIError, Context
+from graph_lcb.graphs.engine import Graph, GraphError
+from graph_lcb.commands.common import cli, evidences, edge_response, emit, property_arguments
 
 @cli.handler("edit", "Edit node fields or edge description/properties/evidences: edit node|edge ...")
 def edit_record(ctx: Context) -> None:
