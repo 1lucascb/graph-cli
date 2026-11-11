@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from graphs.engine import Graph, GraphError
-from graphs.types import Edge, Node
+from graph_lcb.graphs.engine import Graph, GraphError
+from graph_lcb.graphs.types import Edge, Node
 
 
 class GraphTraversalTests(unittest.TestCase):

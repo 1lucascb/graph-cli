@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from graphs.engine import Graph, GraphError
-from graphs.types import Edge, Node
+from graph_lcb.graphs.engine import Graph, GraphError
+from graph_lcb.graphs.types import Edge, Node
 
 ROOT = Path(__file__).resolve().parents[1]
 GRAPH_SCRIPT = ROOT / "graph"
@@ -186,10 +186,10 @@ def test_new_graph_copies_schemas_and_references_them(tmp_path: Path) -> None:
     assert entities["$schema"] == "./schemas/entities.schema.json"
     assert edges["$schema"] == "./schemas/edges.schema.json"
     assert (graph_directory / "schemas" / "entities.schema.json").read_bytes() == (
-        ROOT / "schemas" / "entities.schema.json"
+        ROOT / "graph_lcb" / "schemas" / "entities.schema.json"
     ).read_bytes()
     assert (graph_directory / "schemas" / "edges.schema.json").read_bytes() == (
-        ROOT / "schemas" / "edges.schema.json"
+        ROOT / "graph_lcb" / "schemas" / "edges.schema.json"
     ).read_bytes()
     custom_schema = graph_directory / "schemas" / "entities.schema.json"
     custom_schema.write_text("customized", encoding="utf-8")

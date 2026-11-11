@@ -2,7 +2,7 @@ import io
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
-from cli import CLIError, Context, CLI
+from graph_lcb.cli import CLIError, Context, CLI
 
 
 class MyCLITests(unittest.TestCase):
