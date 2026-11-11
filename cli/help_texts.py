@@ -83,6 +83,26 @@ IDs. --fields selects id,type,source,target,target_type,description,properties,
 metadata,evidences. Default list rows are [source,type,target,target_type],
 sorted by source,type,target,edge ID. List returns {rows,total,truncated}.
 Examples: graph edges --type=CALLS --from=orders-api | graph edges EDGE_UUID""",
+    "search": """Usage: graph search TERM [TERM ...] [--any] [--not TERM ...] [--in FIELD,...] [--kind nodes|edges|all] [--type TYPE,...] [--regex] [--case-sensitive] [--limit N] [--offset N] [--snippets]
+
+Search node and edge text. Terms use AND by default; --any switches positive
+terms to OR. Repeat --not TERM to exclude records matching any excluded term.
+Matching is a case-insensitive substring unless --regex is set; --case-sensitive
+also applies to regex. --in accepts id,name,type,description,properties,
+evidences,source,target. Inapplicable fields are ignored by record kind.
+--type accepts node or edge contract types; --kind defaults to all.
+
+Rows are [node,id,type,name,matched_fields] or
+[edge,source,type,target,matched_fields]. --snippets adds a field-to-excerpt
+object. The JSON response is {rows,total,truncated,next_offset}; total is
+before pagination and next_offset is null when there is no next page. Results
+keep graph node order, then the regular sorted edge order. A term beginning
+with -- must follow a standalone --, for example: graph search -- --literal.
+
+Errors are JSON with codes empty_query, invalid_regex, unknown_field,
+unknown_kind, or unknown_type. Regex uses Python re without a timeout; a
+pathological pattern can take a long time on large evidence text.
+Examples: graph search payment billing --kind=nodes | graph search --regex "payment|billing" stripe""",
     "edit": """Usage: graph edit node ID [options] | graph edit edge EDGE_ID [options]
 Options: [--name TEXT] [--description TEXT] [--properties JSON | --p.KEY=VALUE ...] [--evidences JSON_ARRAY]
 
