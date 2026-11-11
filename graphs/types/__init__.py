@@ -6,6 +6,12 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
+def compact_edge_tuple(edge: Edge, nodes: dict[str, Node]) -> list[str]:
+    """Return the CLI's compact edge tuple, deriving target type when present."""
+    target = nodes.get(edge.target)
+    return [edge.source, edge.type, edge.target, target.type if target is not None else ""]
+
+
 @dataclass(slots=True)
 class Node:
     id: str

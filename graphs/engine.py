@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, TypedDict
 
-from graphs.types import Edge, Node
+from graphs.types import Edge, Node, compact_edge_tuple
 
 NODE_ID_PATTERN = r"[a-z0-9][a-z0-9._-]*"
 
@@ -425,7 +425,7 @@ class Graph:
         reached = sorted(visited - {anchor_id})
         ordered_nodes = [anchor_id, *reached]
         compact_nodes = [[node_id, node_by_id[node_id].type, node_by_id[node_id].name] for node_id in ordered_nodes]
-        compact_edges = [[edge.source, edge.type, edge.target, node_by_id[edge.target].type]
+        compact_edges = [compact_edge_tuple(edge, node_by_id)
                          for edge in sorted(selected_edges.values(), key=lambda item: (item.source, item.type, item.target, item.id))]
         return {"nodes": compact_nodes, "edges": compact_edges, "truncated": truncated}
 

@@ -1,6 +1,20 @@
 """Command help catalog. Keep command behavior descriptions aligned with README.md."""
 
 HELP_TEXTS = {
+    "status": """Usage: graph status [--check=orphans,no-evidence,no-description,components] [--limit N] [--strict]
+
+Read-only summary; requires initialized contracts. A missing graph.json is an
+empty graph. Totals and per-type counts are always returned. --check selects
+finding sections (default: all); --limit is a positive sample cap (default 10).
+Orphans have no incident valid edge; self-loops count as incident. Missing
+evidence means an empty/absent evidences list; missing description means empty
+or whitespace-only. Components are undirected, exclude orphans, and ignore
+dangling edges. Node samples are IDs; edge samples use
+[source,type,target,target_type]. Sample lists are ID-sorted for nodes and use
+the normal edge sort order; each has count, ids, and truncated.
+Returns totals, selected checks, and valid from validation.
+Exit: 0 by default; --strict returns 3 if a selected check has findings.
+Example: graph status --check=orphans,no-evidence --limit=5 --strict""",
     "init": """Usage: graph init
 
 Create .graph/, starter entity/edge contracts, and missing bundled schemas.

@@ -277,6 +277,44 @@ If the store file does not exist, validation treats it as an empty graph. A
 missing workspace or unreadable contract/store is reported in JSON with exit
 code `4`; validation does not initialize or repair anything.
 
+### `graph status`
+
+```text
+graph status [--check=orphans,no-evidence,no-description,components]
+             [--limit N] [--strict]
+```
+
+Read-only summary of graph size and selected quality findings. Requires an
+initialized workspace; a missing `graph.json` is treated as an empty graph.
+Totals and per-type counts are always returned. `--check` selects finding
+sections and defaults to all four; valid values are `orphans`, `no-evidence`,
+`no-description`, and `components`. Unknown values are usage errors. `--limit`
+is a positive sample cap per section (default `10`).
+
+- An orphan has no incident edge whose two endpoints exist. A self-loop is
+  incident and prevents orphan status.
+- Missing evidence means `evidences` is empty or absent, for nodes and edges.
+- Missing description means empty or whitespace-only, for nodes and edges.
+- Components are computed on the undirected graph, exclude orphans, and ignore
+  dangling edges. The result reports component `count` and `largest` size.
+- Node samples are sorted IDs. Edge samples are compact
+  `[source,type,target,target_type]` tuples in the normal edge sort order.
+  Sample objects include `count`, `ids`, and `truncated`.
+- `valid` reports whether the current contracts and graph pass `validate`; the
+  status summary itself is still returned for semantically invalid graphs.
+
+Output always includes `nodes` and `edges` with `total` and `by_type`. It
+includes only selected finding sections, using `no_evidence` and
+`no_description` as output keys. By default status exits `0`; `--strict` exits
+`3` when any selected check has findings. For `components`, multiple
+components count as a finding.
+
+Example:
+
+```sh
+graph status --check=orphans,no-evidence --limit=5 --strict
+```
+
 ### `graph import`
 
 ```text
@@ -693,9 +731,9 @@ exploration in a browser.
 
 | Code | Meaning |
 | --- | --- |
-| `0` | Command completed successfully; `validate` found no violations. |
+| `0` | Command completed successfully; `validate` found no violations, or `status` found no selected findings in strict mode. |
 | `2` | Usage or operation error, such as invalid arguments, invalid data for an operation, a missing initialized workspace, or ambiguous edge deletion. |
-| `3` | A requested graph record was not found, or `validate` found contract/store violations. |
+| `3` | A requested graph record was not found, `validate` found contract/store violations, or `status --strict` found selected findings. |
 | `4` | `validate` could not run because the workspace, contract, or graph store was unavailable or unreadable. |
 
 `validate` always prints a JSON result when it can handle the failure, including
