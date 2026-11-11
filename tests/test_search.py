@@ -48,3 +48,13 @@ def test_search_scope_and_case_sensitivity(tmp_path):
     assert json.loads(run_graph(tmp_path, "search", "PYTHON").stdout)["total"] == 1
     assert json.loads(run_graph(tmp_path, "search", "PYTHON", "--case-sensitive").stdout)["total"] == 0
     assert json.loads(run_graph(tmp_path, "search", "src/order.py", "--in=evidences").stdout)["total"] == 1
+
+
+def test_search_fields_omit_fields_not_applicable_to_result_kind(tmp_path):
+    setup_graph(tmp_path)
+    result = run_graph(tmp_path, "search", "payment", "--fields=id,name,source,target,type")
+    rows = json.loads(result.stdout)["rows"]
+    assert rows == [
+        ["a", "Orders", "API"],
+        ["e", "a", "b", "CALLS"],
+    ]

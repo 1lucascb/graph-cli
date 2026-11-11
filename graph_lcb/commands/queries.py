@@ -5,6 +5,7 @@ from graph_lcb.graphs.engine import Graph, GraphError
 from graph_lcb.commands.common import cli, emit, positive_limit, parse_edge_types, parse_fields
 
 SEARCH_FIELDS = {"id", "name", "type", "description", "properties", "evidences", "source", "target"}
+SEARCH_OUTPUT_FIELDS = SEARCH_FIELDS | {"metadata"}
 
 
 def searchable_text(record, kind: str) -> dict[str, list[str]]:
@@ -39,7 +40,7 @@ def _search_error(code: str, message: str, hint: str) -> None:
     emit({"error": {"code": code, "message": message, "hint": hint}})
 
 
-@cli.handler("search", "Search graph text: search TERM [TERM ...] [--any] [--not TERM ...] [--in FIELD,...] [--kind nodes|edges|all] [--type TYPE,...] [--regex] [--case-sensitive] [--limit N] [--offset N] [--snippets]")
+@cli.handler("search", "Search graph text: search TERM [TERM ...] [--any] [--not TERM ...] [--in FIELD,...] [--kind nodes|edges|all] [--type TYPE,...] [--regex] [--case-sensitive] [--limit N] [--offset N] [--fields FIELD,...] [--snippets]")
 def search(ctx: Context) -> None:
     options = ctx._options
     excluded = [value for name, value in options if name == "not"]
@@ -97,6 +98,24 @@ def search(ctx: Context) -> None:
         _search_error("unknown_field", "--offset requires a non-negative integer", "Use zero or a positive integer.")
         return
     snippets = ctx.flag("snippets") is True
+    output_fields_value = ctx.flag("fields")
+    output_fields = None
+    if output_fields_value is not None:
+        valid_output_fields = sorted(SEARCH_OUTPUT_FIELDS)
+        if not isinstance(output_fields_value, str) or not output_fields_value:
+            _search_error("unknown_field", "--fields requires comma-separated field names", f"Valid fields: {', '.join(valid_output_fields)}")
+            return
+        output_fields = [field.strip() for field in output_fields_value.split(",")]
+        if any(not field for field in output_fields):
+            _search_error("unknown_field", "--fields requires comma-separated field names", f"Valid fields: {', '.join(valid_output_fields)}")
+            return
+        unknown = set(output_fields) - SEARCH_OUTPUT_FIELDS
+        if unknown:
+            _search_error("unknown_field", f"unknown output field: {', '.join(sorted(unknown))}", f"Valid fields: {', '.join(valid_output_fields)}")
+            return
+        if snippets:
+            _search_error("invalid_options", "--fields cannot be combined with --snippets", "Use --fields for positional field values or --snippets with the default search rows.")
+            return
     records = ([ ("node", n) for n in data["nodes"]] if kind in {"all", "nodes"} else [])
     records += [("edge", e) for e in graph.list_edges()] if kind in {"all", "edges"} else []
     rows_all = []
@@ -119,9 +138,12 @@ def search(ctx: Context) -> None:
         if not positive or excluded_hit:
             continue
         matched = sorted(set().union(*map(set, matches)))
-        row = ["node", record.id, record.type, record.name, matched] if record_kind == "node" else ["edge", record.source, record.type, record.target, matched]
-        if snippets:
-            row.append({k: hit_snippets[k] for k in matched})
+        if output_fields is None:
+            row = ["node", record.id, record.type, record.name, matched] if record_kind == "node" else ["edge", record.source, record.type, record.target, matched]
+            if snippets:
+                row.append({k: hit_snippets[k] for k in matched})
+        else:
+            row = [getattr(record, field) for field in output_fields if hasattr(record, field)]
         rows_all.append(row)
     total = len(rows_all)
     page = rows_all[offset: offset + limit if limit is not None else None]
