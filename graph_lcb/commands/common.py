@@ -5,9 +5,9 @@ import shutil
 from copy import deepcopy
 from pathlib import Path
 
-from cli import CLI, CLIError, Context
-from graphs.engine import Graph
-from graphs.types import Edge, EdgeResponse, Node
+from graph_lcb.cli import CLI, CLIError, Context
+from graph_lcb.graphs.engine import Graph
+from graph_lcb.graphs.types import Edge, EdgeResponse, Node
 
 cli = CLI("graph")
 

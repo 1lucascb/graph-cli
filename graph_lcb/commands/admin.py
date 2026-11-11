@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from cli import CLIError, Context
-from graphs.engine import Graph, GraphError, GraphNotInitializedError, InvalidContractError
-from commands.common import cli, emit, positive_limit, starter_contracts
-from graphs.status import CHECKS, compute_status
+from graph_lcb.cli import CLIError, Context
+from graph_lcb.graphs.engine import Graph, GraphError, GraphNotInitializedError, InvalidContractError
+from graph_lcb.commands.common import cli, emit, positive_limit, starter_contracts
+from graph_lcb.graphs.status import CHECKS, compute_status
 
 @cli.handler("validate", "Validate stored graph records against the current contracts (read-only).")
 def validate_graph(ctx: Context) -> int:

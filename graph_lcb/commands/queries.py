@@ -1,8 +1,8 @@
 import re
 
-from cli import CLIError, Context
-from graphs.engine import Graph, GraphError
-from commands.common import cli, emit, positive_limit, parse_edge_types, parse_fields
+from graph_lcb.cli import CLIError, Context
+from graph_lcb.graphs.engine import Graph, GraphError
+from graph_lcb.commands.common import cli, emit, positive_limit, parse_edge_types, parse_fields
 
 SEARCH_FIELDS = {"id", "name", "type", "description", "properties", "evidences", "source", "target"}
 

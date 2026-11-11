@@ -7,10 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from cli import CLIError, Context
-from commands.common import cli, emit
-from graphs.engine import Graph
-from graphs.types import Edge, Node
+from graph_lcb.cli import CLIError, Context
+from graph_lcb.commands.common import cli, emit
+from graph_lcb.graphs.engine import Graph
+from graph_lcb.graphs.types import Edge, Node
 
 
 @cli.handler(

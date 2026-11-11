@@ -179,6 +179,7 @@ graph <command> [arguments] [options]
 - `--help` or `-h` prints command help. `graph help` prints the command list;
   `graph help COMMAND` prints a concise technical guide with usage, behavior,
   return shape, and examples. The README remains the full reference.
+- `--version` prints the installed `graph-lcb` package version.
 - `--` stops option parsing. Arguments after it are treated as positional
   values.
 - Commands requiring a graph workspace expect `graph init` to have been run
@@ -196,6 +197,14 @@ graph help [COMMAND]
 Print the registered commands, or a concise technical guide for one command.
 Command guides include usage, behavior, output shape, and examples. These forms
 do not read or create graph files.
+
+### `graph --version`
+
+```text
+graph --version
+```
+
+Print the installed `graph-lcb` package version.
 
 ### `graph init`
 

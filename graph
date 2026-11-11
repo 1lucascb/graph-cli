@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Graph management CLI entry point."""
 
-from graph_cli import main
+from graph_lcb.graph_cli import main
 
 
 if __name__ == "__main__":
