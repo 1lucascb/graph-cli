@@ -176,9 +176,9 @@ graph <command> [arguments] [options]
 - JSON option values must be valid JSON. The examples below use single quotes
   around JSON, as is customary in POSIX shells; use quoting appropriate for
   your shell.
-- `--help` or `-h` prints brief command help. `graph help` prints the command
-  list; `graph help COMMAND` prints that command's synopsis. Detailed option
-  behavior is documented below.
+- `--help` or `-h` prints command help. `graph help` prints the command list;
+  `graph help COMMAND` prints a concise technical guide with usage, behavior,
+  return shape, and examples. The README remains the full reference.
 - `--` stops option parsing. Arguments after it are treated as positional
   values.
 - Commands requiring a graph workspace expect `graph init` to have been run
@@ -193,8 +193,9 @@ graph --help
 graph help [COMMAND]
 ```
 
-Print the registered commands, or brief help for one command. These forms do
-not read or create graph files.
+Print the registered commands, or a concise technical guide for one command.
+Command guides include usage, behavior, output shape, and examples. These forms
+do not read or create graph files.
 
 ### `graph init`
 
