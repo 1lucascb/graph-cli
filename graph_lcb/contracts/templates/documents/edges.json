@@ -1,0 +1,9 @@
+{
+  "$schema": "./schemas/edges.schema.json",
+  "DEFINES": { "description": "A document defines or explains a concept.", "source": ["DOCUMENT"], "target": ["CONCEPT"], "properties": { "section": { "type": "string", "required": true } } },
+  "DECIDES": { "description": "A document records a decision.", "source": ["DOCUMENT"], "target": ["DECISION"], "properties": { "decision_context": { "type": "string", "required": true } } },
+  "SUPERSEDES": { "description": "A decision replaces an earlier decision.", "source": ["DECISION"], "target": ["DECISION"], "properties": { "reason": { "type": "string", "required": true } } },
+  "REFERENCES": { "description": "A document, concept, or decision refers to another documented item.", "source": ["DOCUMENT", "CONCEPT", "DECISION"], "target": ["DOCUMENT", "CONCEPT", "DECISION"], "properties": { "reference_context": { "type": "string", "required": true } } },
+  "AUTHORED_BY": { "description": "A person authored a document or decision.", "source": ["DOCUMENT", "DECISION"], "target": ["PERSON"], "properties": { "contribution": { "type": "string", "required": true } } },
+  "OWNED_BY": { "description": "An organization owns or maintains a document or decision.", "source": ["DOCUMENT", "DECISION"], "target": ["ORGANIZATION"], "properties": { "ownership_role": { "type": "string", "required": true } } }
+}

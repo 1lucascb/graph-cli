@@ -1,0 +1,8 @@
+{
+  "$schema": "./schemas/entities.schema.json",
+  "QUESTION": { "description": "A research question the investigation aims to answer.", "properties": { "scope": { "type": "string", "required": true }, "status": { "type": "string", "required": true } } },
+  "SOURCE": { "description": "A primary or secondary source consulted during research.", "properties": { "uri": { "type": "string", "required": true }, "source_kind": { "type": "string", "required": true } } },
+  "FINDING": { "description": "An observation or result derived from one or more sources.", "properties": { "summary": { "type": "string", "required": true }, "confidence": { "type": "string", "required": true } } },
+  "CLAIM": { "description": "A specific proposition supported or challenged by evidence.", "properties": { "statement": { "type": "string", "required": true }, "assessment": { "type": "string", "required": true } } },
+  "PERSON": { "description": "A researcher or contributor involved in the investigation.", "properties": { "role": { "type": "string", "required": true } } }
+}

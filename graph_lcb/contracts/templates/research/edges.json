@@ -1,0 +1,8 @@
+{
+  "$schema": "./schemas/edges.schema.json",
+  "INVESTIGATES": { "description": "A finding or source contributes to investigating a question.", "source": ["FINDING", "SOURCE"], "target": ["QUESTION"], "properties": { "contribution": { "type": "string", "required": true } } },
+  "DERIVED_FROM": { "description": "A finding was derived from a source.", "source": ["FINDING"], "target": ["SOURCE"], "properties": { "evidence_note": { "type": "string", "required": true } } },
+  "SUPPORTS": { "description": "A source or finding supports a claim.", "source": ["SOURCE", "FINDING"], "target": ["CLAIM"], "properties": { "supporting_detail": { "type": "string", "required": true } } },
+  "CHALLENGES": { "description": "A source or finding challenges a claim.", "source": ["SOURCE", "FINDING"], "target": ["CLAIM"], "properties": { "counter_detail": { "type": "string", "required": true } } },
+  "AUTHORED_BY": { "description": "A person produced a finding or conducted an investigation.", "source": ["FINDING", "QUESTION"], "target": ["PERSON"], "properties": { "contribution": { "type": "string", "required": true } } }
+}

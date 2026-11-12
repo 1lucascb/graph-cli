@@ -11,27 +11,8 @@ from graph_lcb.graphs.types import Edge, EdgeResponse, Node
 
 cli = CLI("graph")
 
-STARTER_ENTITY_CONTRACT = {
-    "$schema": "./schemas/entities.schema.json",
-    "API": {
-        "description": "An API or application service",
-        "properties": {
-            "language": {"type": "string", "required": True},
-        },
-    },
-}
-STARTER_EDGE_CONTRACT = {
-    "$schema": "./schemas/edges.schema.json",
-    "CALLS": {
-        "description": "A service synchronously invokes another service or API.",
-        "source": ["API"],
-        "target": ["API"],
-        "properties": {
-            "protocol": {"type": "string", "required": False},
-        },
-    },
-}
-
+EMPTY_ENTITY_CONTRACT = {"$schema": "./schemas/entities.schema.json"}
+EMPTY_EDGE_CONTRACT = {"$schema": "./schemas/edges.schema.json"}
 
 def edge_response(edge: Edge, nodes: list[Node]) -> EdgeResponse:
     target = next((node for node in nodes if node.id == edge.target), None)
@@ -48,38 +29,58 @@ def emit(value: object) -> None:
     print(json.dumps(value, ensure_ascii=False, default=json_default, separators=(",", ":")))
 
 
-def initialize_graph_contracts() -> None:
-    """Create missing starter contracts and schemas for the explicit init command."""
+def initialize_graph_contracts(entities: dict | None = None, edges: dict | None = None,
+                               *, dry_run: bool = False,
+                               replace_empty_contracts: bool = False) -> list[str]:
+    """Create missing contracts and schemas; return the files that would be written."""
     directory = Path(".graph")
     schema_directory = directory / "schemas"
-    bundled_schema_directory = Path(__file__).resolve().parents[1] / "schemas"
+    bundled_schema_directory = Path(__file__).resolve().parents[1] / "contracts" / "schemas"
+    entities = entities or EMPTY_ENTITY_CONTRACT
+    edges = edges or EMPTY_EDGE_CONTRACT
+    writes: list[str] = []
     try:
-        directory.mkdir(parents=True, exist_ok=True)
-        schema_directory.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            directory.mkdir(parents=True, exist_ok=True)
+            schema_directory.mkdir(parents=True, exist_ok=True)
         for filename in ("entities.schema.json", "edges.schema.json"):
             source = bundled_schema_directory / filename
             destination = schema_directory / filename
             if not destination.exists():
-                shutil.copyfile(source, destination)
+                writes.append(destination.as_posix())
+                if not dry_run:
+                    shutil.copyfile(source, destination)
             elif not destination.is_file():
                 raise CLIError(f"cannot initialize graph schema: {destination} is not a file")
         for filename, contract in (
-            ("entities.json", STARTER_ENTITY_CONTRACT),
-            ("edges.json", STARTER_EDGE_CONTRACT),
+            ("entities.json", entities),
+            ("edges.json", edges),
         ):
             path = directory / filename
             if path.exists() and not path.is_file():
                 raise CLIError(f"cannot initialize graph contract: {path} is not a file")
             if not path.exists():
-                path.write_text(json.dumps(contract) + "\n", encoding="utf-8")
+                writes.append(path.as_posix())
+                if not dry_run:
+                    path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            elif replace_empty_contracts:
+                try:
+                    current = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, UnicodeError, json.JSONDecodeError):
+                    current = None
+                if isinstance(current, dict) and not any(key != "$schema" for key in current):
+                    writes.append(path.as_posix())
+                    if not dry_run:
+                        path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     except OSError as exc:
         raise CLIError(f"cannot initialize graph contracts: {exc}") from exc
+    return writes
 
 
 def starter_contracts() -> tuple[dict, dict]:
     """Return fresh starter contracts without the schema metadata."""
-    entities = deepcopy(STARTER_ENTITY_CONTRACT)
-    edges = deepcopy(STARTER_EDGE_CONTRACT)
+    entities = deepcopy(EMPTY_ENTITY_CONTRACT)
+    edges = deepcopy(EMPTY_EDGE_CONTRACT)
     entities.pop("$schema")
     edges.pop("$schema")
     return entities, edges
@@ -87,10 +88,76 @@ def starter_contracts() -> tuple[dict, dict]:
 
 @cli.handler("init", "Initialize a graph workspace in the current directory.")
 def init_graph(ctx: Context) -> None:
-    if ctx.args or ctx._options:
-        raise CLIError("init accepts no arguments or options")
-    initialize_graph_contracts()
-    emit({"initialized": True, "directory": ".graph"})
+    if ctx.args:
+        raise CLIError("init accepts no positional arguments")
+    from graph_lcb.contracts import list_templates, load_template
+
+    allowed = {"template", "list-templates", "dry-run"}
+    unknown = {name for name, _ in ctx._options} - allowed
+    if unknown:
+        raise CLIError(f"unknown init option: {', '.join(sorted(unknown))}")
+    listing = ctx.flag("list-templates")
+    dry_run = ctx.flag("dry-run")
+    if listing not in (None, True) or dry_run not in (None, True):
+        raise CLIError("--list-templates and --dry-run do not accept values")
+    raw_template = ctx.flag("template")
+    if listing:
+        if raw_template is not None or dry_run:
+            raise CLIError("--list-templates cannot be combined with other options")
+        for name, description in list_templates():
+            print(f"{name}\t{description}")
+        return
+    if raw_template is True:
+        raise CLIError("--template requires a template name")
+    if raw_template is not None and not isinstance(raw_template, str):
+        raise CLIError("--template requires a template name")
+    if raw_template == "":
+        raise CLIError("--template requires a template name")
+
+    template_name = raw_template
+    template_entities = template_edges = None
+    if template_name:
+        template_entities, template_edges = load_template(template_name)
+
+    directory = Path(".graph")
+    # A template fills each missing or schema-only contract. Existing type definitions
+    # are preserved independently, so a partial workspace can still receive a template.
+    entities = template_entities or EMPTY_ENTITY_CONTRACT
+    edges = template_edges or EMPTY_EDGE_CONTRACT
+    for filename, template in (("entities.json", template_entities), ("edges.json", template_edges)):
+        path = directory / filename
+        if template is None or not path.is_file():
+            continue
+        try:
+            current = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise CLIError(f"cannot read graph contract {path}: {exc}") from exc
+        if isinstance(current, dict) and any(key != "$schema" for key in current):
+            if filename == "entities.json":
+                entities = current
+            else:
+                edges = current
+    if dry_run:
+        writes = initialize_graph_contracts(entities, edges, dry_run=True,
+                                            replace_empty_contracts=bool(template_name))
+    else:
+        writes = initialize_graph_contracts(entities, edges,
+                                            replace_empty_contracts=bool(template_name))
+    would_apply = bool(template_name and any(name.endswith(("entities.json", "edges.json")) for name in writes))
+    applied = would_apply and not dry_run
+    contract_writes = any(name.endswith(("entities.json", "edges.json")) for name in writes)
+    output = {"initialized": True, "directory": ".graph",
+              "contracts": "template" if would_apply else (
+                  "empty" if contract_writes and not template_name else "existing")}
+    if template_name:
+        output.update({"template": template_name, "applied": applied})
+        if not applied:
+            output["reason"] = ("dry run; no files were written" if dry_run
+                                else "contracts already contain types")
+    if dry_run:
+        output["dry_run"] = True
+        output["would_write"] = writes
+    emit(output)
 
 
 def property_arguments(

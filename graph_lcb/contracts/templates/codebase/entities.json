@@ -1,0 +1,15 @@
+{
+  "$schema": "./schemas/entities.schema.json",
+  "REPOSITORY": { "description": "A source code repository or independently versioned project.", "properties": { "url": { "type": "string", "required": true }, "primary_language": "string" } },
+  "PACKAGE": { "description": "A buildable or publishable package within a repository.", "properties": { "name": { "type": "string", "required": true }, "manifest_path": { "type": "string", "required": true }, "version": "string" } },
+  "MODULE": { "description": "A cohesive code unit that groups related files, classes, or functions.", "properties": { "path": { "type": "string", "required": true }, "responsibility": { "type": "string", "required": true } } },
+  "FILE": { "description": "A source, configuration, or resource file in a repository.", "properties": { "path": { "type": "string", "required": true }, "language": "string", "purpose": { "type": "string", "required": true } } },
+  "CLASS": { "description": "A class, type, or other named object-oriented definition.", "properties": { "name": { "type": "string", "required": true }, "file_path": { "type": "string", "required": true } } },
+  "FUNCTION": { "description": "A function, method, or callable entry point.", "properties": { "name": { "type": "string", "required": true }, "file_path": { "type": "string", "required": true }, "signature": "string" } },
+  "TEST": { "description": "An automated test or test suite that checks software behavior.", "properties": { "path": { "type": "string", "required": true }, "framework": "string", "test_scope": { "type": "string", "required": true } } },
+  "API": { "description": "A deployable application service that exposes an interface to callers.", "properties": { "language": { "type": "string", "required": true }, "framework": "string", "entrypoint": "string" } },
+  "WORKER": { "description": "A background process that handles asynchronous or scheduled work.", "properties": { "runtime": { "type": "string", "required": true }, "entrypoint": "string" } },
+  "DATASTORE": { "description": "A database or other persistent data store used by the software.", "properties": { "technology": { "type": "string", "required": true }, "data_domain": "string" } },
+  "QUEUE": { "description": "A queue or stream used to exchange asynchronous messages.", "properties": { "technology": { "type": "string", "required": true }, "message_purpose": "string" } },
+  "EXTERNAL_DEPENDENCY": { "description": "A third-party library, service, API, or tool used by the repository.", "properties": { "name": { "type": "string", "required": true }, "dependency_type": { "type": "string", "required": true }, "version_constraint": "string" } }
+}

@@ -27,21 +27,32 @@ python -m pytest
 
 ## Workspace and files
 
-Initialize a project explicitly:
+Initialize a project explicitly. By default, `graph init` creates empty entity
+and edge contracts with their `$schema` keys, so you can define types for your
+domain. You can use a bundled template as an editable starting point:
 
 ```sh
 graph init
+# or: graph init --template=codebase
+# or: graph init --template=documents
 ```
 
-This creates missing starter contract files and copies the bundled JSON
-Schemas into `.graph/schemas/`. Existing contracts, schemas, and graph data
-are preserved. Initialization does not create `graph.json`; the graph store
-is written when a record is first added.
+This copies the bundled JSON Schemas into `.graph/schemas/`. List templates
+with `graph init --list-templates`; preview a run with
+`graph init --template=codebase --dry-run`. Templates are examples, not a
+complete model of your project: review and edit their contracts to fit the
+domain. Init fills missing or empty contracts and preserves contracts that
+already define types. Existing schemas and graph data are preserved.
+Available templates include `codebase`, `documents`, `data-pipeline`, and
+`research`. Their entity and edge types define required properties, so records
+of those types cannot be added with empty `properties` objects.
+Initialization does not create `graph.json`; the graph store is written when a
+record is first added.
 
 Graph operations do not initialize a workspace implicitly. If `.graph/` or
 either contract file is missing, graph operations report that the workspace
 must be initialized. `graph validate` reports an uninitialized workspace
-without creating files. `graph contract` can display the starter contracts
+without creating files. `graph contract` can display the empty contracts
 without creating a workspace.
 
 | Path | Purpose |
@@ -80,7 +91,8 @@ that model, gather evidence, and query it consistently.
 
 An entity contract maps each entity type to a definition with a `properties`
 object. An edge contract additionally defines the allowed source and target
-entity types. The starter contracts created by `graph init` are:
+entity types. The empty contracts created by `graph init` contain only
+`$schema` references. Templates provide editable starting examples:
 
 ```json
 {
@@ -229,7 +241,7 @@ graph contract [entities|edges] [--compact]
 ```
 
 Show contract definitions. This command can be used before initialization;
-when no workspace contract files exist, it displays the built-in starter
+when no workspace contract files exist, it displays empty contracts
 contracts without writing them.
 
 | Parameter | Meaning |
@@ -336,7 +348,8 @@ as nodes. The `kind` marker is removed before the record is stored. Edge records
 may omit `id`, in which case an ID is generated.
 
 For example, this JSONL file contains two API nodes followed by two
-directed `CALLS` edges. It uses the starter contracts created by `graph init`:
+directed `CALLS` edges. It uses a codebase template contract (apply it with
+`graph init --template=codebase`):
 
 ```jsonl
 {"kind":"node","id":"web-api","type":"API","name":"Web API","properties":{"language":"Python"},"evidences":[{"source":"src/web_api.py","locator":{"start_line":1,"end_line":12},"note":"Defines the web API application."}]}

@@ -1,0 +1,13 @@
+{
+  "$schema": "./schemas/edges.schema.json",
+  "CONTAINS": { "description": "A repository, package, or module contains a code or test artifact.", "source": ["REPOSITORY", "PACKAGE", "MODULE"], "target": ["PACKAGE", "MODULE", "FILE", "CLASS", "FUNCTION", "TEST"], "properties": { "role": { "type": "string", "required": true } } },
+  "DEFINES": { "description": "A file defines a module, class, or function.", "source": ["FILE"], "target": ["MODULE", "CLASS", "FUNCTION"], "properties": { "symbol_kind": { "type": "string", "required": true } } },
+  "IMPORTS": { "description": "A file or module imports or directly depends on another code unit or package.", "source": ["FILE", "MODULE", "PACKAGE"], "target": ["FILE", "MODULE", "PACKAGE", "EXTERNAL_DEPENDENCY"], "properties": { "import_name": { "type": "string", "required": true } } },
+  "CALLS": { "description": "A function, API, or worker invokes another function, API, worker, or external dependency.", "source": ["FUNCTION", "API", "WORKER"], "target": ["FUNCTION", "API", "WORKER", "EXTERNAL_DEPENDENCY"], "properties": { "call_kind": { "type": "string", "required": true }, "protocol": "string" } },
+  "TESTS": { "description": "A test checks a module, file, class, function, API, or worker.", "source": ["TEST"], "target": ["MODULE", "FILE", "CLASS", "FUNCTION", "API", "WORKER"], "properties": { "test_kind": { "type": "string", "required": true } } },
+  "READS": { "description": "A module, function, API, or worker reads data from a datastore.", "source": ["MODULE", "FUNCTION", "API", "WORKER"], "target": ["DATASTORE"], "properties": { "data_purpose": { "type": "string", "required": true } } },
+  "WRITES": { "description": "A module, function, API, or worker writes data to a datastore.", "source": ["MODULE", "FUNCTION", "API", "WORKER"], "target": ["DATASTORE"], "properties": { "data_purpose": { "type": "string", "required": true } } },
+  "PUBLISHES": { "description": "A module, function, API, or worker publishes messages to a queue.", "source": ["MODULE", "FUNCTION", "API", "WORKER"], "target": ["QUEUE"], "properties": { "message_purpose": { "type": "string", "required": true } } },
+  "CONSUMES": { "description": "A module, function, API, or worker consumes messages from a queue.", "source": ["MODULE", "FUNCTION", "API", "WORKER"], "target": ["QUEUE"], "properties": { "message_purpose": { "type": "string", "required": true } } },
+  "DEPENDS_ON": { "description": "A package, API, or worker requires an external dependency at runtime or build time.", "source": ["PACKAGE", "API", "WORKER"], "target": ["EXTERNAL_DEPENDENCY"], "properties": { "dependency_scope": { "type": "string", "required": true } } }
+}

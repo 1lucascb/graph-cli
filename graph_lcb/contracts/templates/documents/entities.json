@@ -1,0 +1,8 @@
+{
+  "$schema": "./schemas/entities.schema.json",
+  "DOCUMENT": { "description": "A document that records or communicates information.", "properties": { "path": { "type": "string", "required": true }, "document_kind": { "type": "string", "required": true }, "date": "string" } },
+  "CONCEPT": { "description": "A named idea, term, or subject discussed in the knowledge base.", "properties": { "category": { "type": "string", "required": true }, "definition": { "type": "string", "required": true } } },
+  "DECISION": { "description": "A decision and its rationale recorded by the project or organization.", "properties": { "status": { "type": "string", "required": true }, "date": { "type": "string", "required": true } } },
+  "PERSON": { "description": "A person who authored, owns, or is accountable for documented knowledge.", "properties": { "role": { "type": "string", "required": true } } },
+  "ORGANIZATION": { "description": "A team, company, or other organization referenced by documents.", "properties": { "organization_kind": { "type": "string", "required": true } } }
+}

@@ -1,0 +1,8 @@
+{
+  "$schema": "./schemas/edges.schema.json",
+  "CONTAINS": { "description": "A pipeline groups a job as one of its workflow steps.", "source": ["PIPELINE"], "target": ["JOB"], "properties": { "step_name": { "type": "string", "required": true }, "sequence": { "type": "integer", "required": true } } },
+  "READS": { "description": "A job or source system reads or provides a dataset.", "source": ["JOB", "SOURCE_SYSTEM"], "target": ["DATASET"], "properties": { "read_mode": { "type": "string", "required": true } } },
+  "WRITES": { "description": "A job writes or produces a dataset.", "source": ["JOB"], "target": ["DATASET"], "properties": { "write_mode": { "type": "string", "required": true } } },
+  "DELIVERS_TO": { "description": "A pipeline or job sends output to a destination.", "source": ["PIPELINE", "JOB"], "target": ["DESTINATION"], "properties": { "delivery_mode": { "type": "string", "required": true } } },
+  "DEPENDS_ON": { "description": "A job must complete before another job can run.", "source": ["JOB"], "target": ["JOB"], "properties": { "dependency_reason": { "type": "string", "required": true } } }
+}
