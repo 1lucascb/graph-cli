@@ -3,7 +3,7 @@
 import sys
 from importlib.metadata import PackageNotFoundError, version
 
-from graph_lcb.commands import admin, importing, mutations, queries, records, visualization  # noqa: F401
+from graph_lcb.commands import admin, importing, mutations, queries, records, skills, visualization  # noqa: F401
 from graph_lcb.commands.common import cli
 from graph_lcb.graphs.engine import GraphError
 

@@ -44,7 +44,7 @@ Several tasks usually combine: mapping uses contracts first, then batch imports,
 
 ## Evidence convention
 
-Evidence objects are free-form, but use these fields consistently so the graph stays searchable and comparable across agents:
+Evidence objects are **free-form**, but use these fields consistently so the graph stays searchable and comparable across agents:
 
 ```json
 {"source": "services/orders/src/api.py", "locator": {"start_line": 12, "end_line": 28}, "note": "Route handler for POST /orders"}

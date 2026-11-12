@@ -55,6 +55,22 @@ NOTES
 EXAMPLES
   graph init
 """,
+    "install-skill": r"""
+graph install-skill DIRECTORY - Install the bundled graph-lcb agent skill
+
+USAGE
+  graph install-skill DIRECTORY
+
+DESCRIPTION
+  Copies SKILL.md and its references into DIRECTORY/graph-lcb/.
+
+NOTES
+  DIRECTORY is created if needed. Existing DIRECTORY/graph-lcb/ is preserved and causes an error.
+
+EXAMPLES
+  graph install-skill .
+  graph install-skill ../my-project
+""",
     "contract": r"""
 graph contract - Show the entity and edge type contracts
 
