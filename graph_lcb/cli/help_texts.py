@@ -1,156 +1,447 @@
-"""Command help catalog. Keep command behavior descriptions aligned with README.md."""
+_RAW = {
+    "status": r"""
+graph status - Summarize graph size and data-quality findings
 
-HELP_TEXTS = {
-    "status": """Usage: graph status [--check=orphans,no-evidence,no-description,components] [--limit N] [--strict]
+USAGE
+  graph status [--check=CHECKS] [--limit N] [--strict]
 
-Read-only summary; requires initialized contracts. A missing graph.json is an
-empty graph. Totals and per-type counts are always returned. --check selects
-finding sections (default: all); --limit is a positive sample cap (default 10).
-Orphans have no incident valid edge; self-loops count as incident. Missing
-evidence means an empty/absent evidences list; missing description means empty
-or whitespace-only. Components are undirected, exclude orphans, and ignore
-dangling edges. Node samples are IDs; edge samples use
-[source,type,target,target_type]. Sample lists are ID-sorted for nodes and use
-the normal edge sort order; each has count, ids, and truncated.
-Returns totals, selected checks, and valid from validation.
-Exit: 0 by default; --strict returns 3 if a selected check has findings.
-Example: graph status --check=orphans,no-evidence --limit=5 --strict""",
-    "init": """Usage: graph init
+OPTIONS
+  --check=CHECKS   Comma-separated sections: orphans, no-evidence, no-description, components (default: all)
+  --limit N        Positive sample cap per section (default: 10)
+  --strict         Exit 3 if any selected check has findings
 
-Create .graph/, starter entity/edge contracts, and missing bundled schemas.
-Preserves existing files; does not create graph.json.
-Returns: {\"initialized\":true,\"directory\":\".graph\"}. Safe to rerun.
-Example: graph init""",
-    "contract": """Usage: graph contract [entities|edges] [--compact]
+OUTPUT
+  Always: nodes and edges with "total" and "by_type".
+  Per selected check (keys: orphans, no_evidence, no_description, components): count, ids, truncated.
+  Also: "valid", the result of `graph validate` on the current contracts and graph.
+  Node samples are sorted IDs. Edge samples are [source,type,target,target_type] in the normal edge order.
+  components reports the component "count" and the "largest" size.
 
-Read and print the entity and/or edge type contracts. Before initialization,
-prints built-in starter contracts without writing files. Default output is JSON;
---compact prints readable type, endpoint, and property summaries.
-Returns: contract object(s), or compact text. $schema metadata is omitted.
-Examples: graph contract | graph contract edges --compact""",
-    "validate": """Usage: graph validate
+WHAT COUNTS AS A FINDING
+  orphans          Nodes with no incident edge whose endpoints both exist (a self-loop counts as incident)
+  no-evidence      Nodes or edges whose evidences list is empty or absent
+  no-description   Nodes or edges whose description is empty or whitespace-only
+  components       More than one connected component (undirected, orphans excluded, dangling edges ignored)
 
-Read-only validation of workspace contracts and graph records; reports all
-detected issues and never creates or repairs files. Missing graph.json is an
-empty graph. A missing workspace or unreadable files are represented in JSON.
-Returns: {valid, errors, summary:{nodes,edges,errors}}.
-Exit: 0 valid; 3 invalid; 4 unavailable workspace/data.
-Example: graph validate""",
-    "import": """Usage: graph import FILE [--on-conflict=error|skip|replace] [--dry-run]
+NOTES
+  Read-only. Requires an initialized workspace. A missing graph.json is treated as an empty graph.
 
-Import JSONL (one JSON object per line); FILE '-' reads stdin. Records may use
-kind=node|edge; otherwise source/target fields identify edges. Edge IDs may be
-omitted and generated. Parses and validates the whole batch before one atomic
-write; any invalid record aborts all changes. Conflict key: node ID, or edge ID /
-type+endpoints+properties. replace updates differences; skip preserves existing.
---on-conflict=error (default) reports a conflict and aborts the whole import;
-skip leaves the existing record unchanged; replace updates differing content.
-With replace, identical content is counted as unchanged. For semantic edge
-replacement, the existing edge ID is retained.
-Returns: {valid,dry_run,summary:{created,updated,unchanged,errors},errors}.
---dry-run reports planned counts without writing. Invalid batch exits 3.
-Examples: graph import records.jsonl --dry-run | cat records.jsonl | graph import -""",
-    "add-node": """Usage: graph add-node ID NAME TYPE [--description TEXT] [--properties JSON | --p.KEY=VALUE ...] [--evidences JSON_ARRAY]
+EXIT CODES
+  0   Success (default, even with findings)
+  3   --strict and at least one selected check has findings
 
-Create a node; ID must match ^[a-z0-9][a-z0-9._-]*$, be unique, and TYPE must
-exist in entities.json. Property keys/types and required values follow its
-contract. --properties replaces the complete property object; --p.KEY sets
-individual values (JSON literals keep their types, other text is a string).
-Returns: complete node record with metadata timestamps and evidences.
-Example: graph add-node orders-api \"Orders API\" API --p.language=Python""",
-    "add-edge": """Usage: graph add-edge SOURCE_ID EDGE_TYPE TARGET_ID [--description TEXT] [--properties JSON | --p.KEY=VALUE ...] [--evidences JSON_ARRAY]
+EXAMPLES
+  graph status
+  graph status --check=orphans,no-evidence --limit=5
+  graph status --check=orphans --strict          # use in CI to fail on orphan nodes
+""",
+    "init": r"""
+graph init - Create the .graph/ workspace
 
-Create a directed edge between existing nodes. Contract endpoint types must
-allow the source and target node types. Duplicate edges (same type/endpoints/
-properties) are rejected; parallel edges require a non-empty description and,
-for the same type, different properties. Edge ID is generated.
-Returns: complete edge record; target_type is derived from target node.
-Example: graph add-edge orders-api CALLS stock-api --description \"Checks stock\"""" ,
-    "nodes": """Usage: graph nodes [ID] [--type TYPE[,TYPE...]] [--properties JSON] [--p.KEY=VALUE ...] [--prefix TEXT] [--suffix TEXT] [--contains TEXT] [--limit N] [--fields FIELD,...]
+USAGE
+  graph init
 
-Get a complete node by exact ID, or list nodes matching filters. Filters combine
-with AND; multiple types combine with OR. Name matches are case-insensitive;
---p.KEY string comparisons ignore case, --properties values compare exactly.
---fields selects id,type,name,description,properties,metadata,evidences.
-List returns {rows,total,truncated}; total is before limit. ID lookup cannot
-combine with filters or --fields. List order follows graph.json.
-Examples: graph nodes orders-api | graph nodes --type=API --contains=order --limit=10""",
-    "edges": """Usage: graph edges [EDGE_ID] [--type TYPE[,TYPE...]] [--properties JSON] [--p.KEY=VALUE ...] [--from SOURCE_ID] [--to TARGET_ID] [--limit N] [--fields FIELD,...]
+DESCRIPTION
+  Creates .graph/, the starter entities.json and edges.json contracts, and any missing bundled JSON Schemas under .graph/schemas/.
 
-Get a complete edge by ID, or list edges matching filters. Filters combine
-with AND; multiple types combine with OR. --from/--to require existing node
-IDs. --fields selects id,type,source,target,target_type,description,properties,
-metadata,evidences. Default list rows are [source,type,target,target_type],
-sorted by source,type,target,edge ID. List returns {rows,total,truncated}.
-Examples: graph edges --type=CALLS --from=orders-api | graph edges EDGE_UUID""",
-    "search": """Usage: graph search TERM [TERM ...] [--any] [--not TERM ...] [--in FIELD,...] [--kind nodes|edges|all] [--type TYPE,...] [--regex] [--case-sensitive] [--limit N] [--offset N] [--fields FIELD,...] [--snippets]
+OUTPUT
+  {"initialized":true,"directory":".graph"}
 
-Search node and edge text. Terms use AND by default; --any switches positive
-terms to OR. Repeat --not TERM to exclude records matching any excluded term.
-Matching is a case-insensitive substring unless --regex is set; --case-sensitive
-also applies to regex. --in accepts id,name,type,description,properties,
-evidences,source,target. Inapplicable fields are ignored by record kind.
---type accepts node or edge contract types; --kind defaults to all.
+NOTES
+  Safe to rerun: existing contracts, schemas, and graph data are never overwritten.
+  Does not create graph.json; it is written the first time a record is added.
+  Run it from the project whose .graph/ you want to use (the workspace is resolved from the current directory).
 
-Rows are [node,id,type,name,matched_fields] or
-[edge,source,type,target,matched_fields]. --snippets adds a field-to-excerpt
-object. --fields returns arrays of selected values in the requested order.
-Allowed output fields are id,type,name,source,target,description,properties,
-metadata,evidences; inapplicable fields are omitted for each result. The JSON response is {rows,total,truncated,next_offset}; total is
-before pagination and next_offset is null when there is no next page. --fields
-cannot be combined with --snippets. Results
-keep graph node order, then the regular sorted edge order. A term beginning
-with -- must follow a standalone --, for example: graph search -- --literal.
+EXAMPLES
+  graph init
+""",
+    "contract": r"""
+graph contract - Show the entity and edge type contracts
 
-Errors are JSON with codes empty_query, invalid_regex, unknown_field,
-unknown_kind, or unknown_type. Regex uses Python re without a timeout; a
-pathological pattern can take a long time on large evidence text.
-Examples: graph search payment billing --kind=nodes | graph search --regex "payment|billing" stripe""",
-    "edit": """Usage: graph edit node ID [options] | graph edit edge EDGE_ID [options]
-Options: [--name TEXT] [--description TEXT] [--properties JSON | --p.KEY=VALUE ...] [--evidences JSON_ARRAY]
+USAGE
+  graph contract [entities|edges] [--compact]
 
-Update an existing record in place. Node/edge IDs, types, and endpoints cannot
-be edited. --properties replaces all properties; --p.KEY updates selected keys.
---evidences replaces the full evidence list; [] clears it. At least one editable
-option is required; omitted values are preserved. Contracts and edge duplicate/
-parallel rules are revalidated; updated_at is refreshed.
-Returns: updated complete record.
-Examples: graph edit node orders-api --name=\"Orders service\" | graph edit edge EDGE_UUID --p.method=GET""",
-    "delete": """Usage: graph delete node ID | graph delete edge EDGE_ID | graph delete edge SOURCE_ID EDGE_TYPE TARGET_ID
+ARGUMENTS
+  entities | edges   Show only that section (default: both)
 
-Delete a node (also removes every connected edge) or an edge. Tuple edge
-selection is case-insensitive by type and requires existing endpoints; it only
-deletes when exactly one edge matches. If ambiguous, no data changes and the
-candidate IDs are printed (exit 2). Delete by ID to select exactly one record.
-Returns: deleted record; node deletion also reports deleted_edges count.
-Examples: graph delete node orders-api | graph delete edge SOURCE CALLS TARGET""",
-    "traverse": """Usage: graph traverse NODE_ID [--depth N] [--direction in|out|both] [--edge TYPE[,TYPE...]] [--limit N] [--fields FIELD,...]
+OPTIONS
+  --compact          Readable text summary (types, endpoints, property types) instead of JSON
 
-Breadth-first traversal from an existing anchor; anchor is always included.
-Depth is positive hops (default 1); direction defaults to both. --edge filters
-allowed contract types. --limit caps reached non-anchor nodes. --fields selects
-id,type,name,description,properties,metadata,evidences instead of node tuples.
-Returns: {nodes,edges,truncated}. Default nodes are [id,type,name]; edges are
-[source,type,target,target_type] in stored orientation. Cross-links/cycle edges
-may appear. truncated is true only when --limit excludes reachable nodes.
-Example: graph traverse orders-api --depth=2 --direction=out --edge=CALLS --limit=20""",
-    "path": """Usage: graph path SOURCE_ID TARGET_ID [--direction out|in|both] [--edge TYPE[,TYPE...]] [--max-depth N] [--limit N] [--fields FIELD,...]
+OUTPUT
+  JSON by default: {"entities":...,"edges":...}, or just the selected contract object.
+  With --compact: plain text, not JSON. The $schema metadata is always omitted.
 
-Enumerate simple paths (no repeated node) between existing nodes. Direction
-defaults to out; in traverses backward and both permits either orientation.
-Paths are shortest first with deterministic tie-breaking. max-depth defaults to
-node_count-1; 0 permits only a same-node zero-hop path. --limit defaults to 1.
-Returns: {paths,truncated}; each path has nodes, edges, hops. Default nodes are
-[id,type,name], edges [edge_id,source,type,target,target_type]. No route gives
-paths=[]. truncated means another path exists beyond limit, not search cutoff.
-Use --max-depth/--edge/modest --limit on dense graphs.
-Example: graph path orders-api database --direction=both --edge=CALLS,READS --limit=5""",
-    "view": """Usage: graph view [--no-open]
+NOTES
+  Works before `graph init`: prints the built-in starter contracts without writing any files.
+  AI agents: run this first to learn valid types and properties before adding records.
 
-Generate a self-contained HTML visualization at .graph/view.html using graph
-records and contract descriptions. Requires initialized workspace; overwrites
-view.html but does not modify graph.json. Opens the page in the system browser
-unless --no-open is supplied.
-Returns: JSON with absolute path, node/edge counts, and opened status.
-Example: graph view --no-open""",
+EXAMPLES
+  graph contract
+  graph contract edges --compact
+""",
+    "validate": r"""
+graph validate - Check contracts and graph records for problems
+
+USAGE
+  graph validate
+
+OUTPUT
+  {"valid":bool,"errors":[{"kind","id","code","message"}],"summary":{"nodes","edges","errors"}}
+  All detected issues are reported in one response.
+
+NOTES
+  Read-only: never creates or repairs files. A missing graph.json is treated as an empty graph.
+  A missing workspace or unreadable files are reported in the JSON output (exit 4).
+
+EXIT CODES
+  0   Valid
+  3   Contract or graph violations found
+  4   Workspace, contract, or graph store unavailable or unreadable
+
+EXAMPLES
+  graph validate
+""",
+    "import": r"""
+graph import - Bulk-load nodes and edges from JSONL
+
+USAGE
+  graph import FILE [--on-conflict=error|skip|replace] [--dry-run]
+
+ARGUMENTS
+  FILE   Path to a JSONL file (one JSON object per line), or "-" to read stdin
+
+OPTIONS
+  --on-conflict=MODE   error (default): report the conflict and abort everything
+                       skip: keep the existing record unchanged
+                       replace: update the existing record if content differs (identical content counts as unchanged)
+  --dry-run            Validate and report planned counts without writing
+
+RECORD FORMAT
+  {"kind":"node","id":"web-api","type":"API","name":"Web API","properties":{"language":"Python"}, "evidences": [{"source": "...", "start_line": X, "end_line": Y}, {...}]}
+  {"kind":"edge","type":"CALLS","source":"web-api","target":"billing-api","description":"Requests payment","properties":{"protocol":"HTTP"}, "evidences": [EVIDENCE_OBJECTS...]}
+  "kind" is optional: records with source/target are edges, everything else is a node. Edge "id" may be omitted (it is generated).
+  Edges may reference nodes defined later in the same file.
+
+CONFLICT KEYS
+  Nodes: the node ID.
+  Edges: the edge ID, or the same type + endpoints + properties. A semantic replace keeps the existing edge ID.
+
+OUTPUT
+  {"valid","dry_run","summary":{"created","updated","unchanged","errors"},"errors":[...]}
+  Errors include the input line number when tied to a record.
+
+NOTES
+  The whole batch is parsed and validated before one atomic write: a single invalid record aborts all changes.
+  AI agents: always run with --dry-run first.
+
+EXIT CODES
+  0   Imported (or dry run passed)
+  3   Invalid batch; nothing was written
+
+EXAMPLES
+  graph import records.jsonl --dry-run
+  graph import records.jsonl --on-conflict=replace
+  cat records.jsonl | graph import -
+""",
+    "add-node": r"""
+graph add-node - Create a node
+
+USAGE
+  graph add-node ID NAME TYPE [--description TEXT] [--properties JSON | --p.KEY=VALUE ...] [--evidences JSON_ARRAY]
+
+ARGUMENTS
+  ID     Unique identifier, matching ^[a-z0-9][a-z0-9._-]*$ (lowercase letters/digits first; then also . _ -)
+  NAME   Display name, stored as given
+  TYPE   Entity type from entities.json (case-insensitive; stored in the contract's spelling)
+
+OPTIONS
+  --description TEXT     Free-form description (default: empty)
+  --properties JSON      Complete properties object (default: {}). Keys must exist in the contract and required ones must be present
+  --p.KEY=VALUE          Set a single property; repeatable. 3, true, null become JSON values, anything else is a string
+  --evidences JSON_ARRAY Array of evidence objects (default: []). Fields inside are user-defined
+
+NOTES
+  --properties and --p.KEY cannot be combined.
+  Metadata created_at and updated_at are set automatically (UTC).
+
+OUTPUT
+  The complete node record: id, type, name, description, properties, metadata, evidences.
+
+EXAMPLES
+  graph add-node orders-api "Orders API" API --p.language=Python
+  graph add-node orders-api "Orders API" API --description "Handles orders" --properties '{"language":"Python","framework":"FastAPI"}'
+  graph add-node orders-api "Orders API" API --p.language=Python --evidences '[{"source":"src/orders/api.py","locator":{"start_line":12,"end_line":28}}]'
+""",
+    "add-edge": r"""
+graph add-edge - Create a directed edge between two existing nodes
+
+USAGE
+  graph add-edge SOURCE_ID EDGE_TYPE TARGET_ID [--description TEXT] [--properties JSON | --p.KEY=VALUE ...] [--evidences JSON_ARRAY]
+
+ARGUMENTS
+  SOURCE_ID    Existing source node ID
+  EDGE_TYPE    Edge type from edges.json (case-insensitive)
+  TARGET_ID    Existing target node ID
+
+OPTIONS
+  --description TEXT      Free-form description (default: empty). Required when another edge already links the same endpoints
+  --properties JSON       Complete properties object (default: {})
+  --p.KEY=VALUE           Set a single property; repeatable. JSON literals keep their type, anything else is a string
+  --evidences JSON_ARRAY  Array of evidence objects (default: [])
+
+RULES
+  The edge contract must allow the source node's type and the target node's type.
+  Duplicates (same type + endpoints + properties) are rejected, even if descriptions differ.
+  A parallel edge of the same type needs a non-empty description and different properties.
+  The edge ID is a generated UUID.
+
+OUTPUT
+  The complete edge record. target_type is derived from the target node.
+
+EXAMPLES
+  graph add-edge orders-api CALLS stock-api
+  graph add-edge orders-api CALLS stock-api --description "Checks stock" --p.method=GET
+  graph add-edge orders-api CALLS stock-api --description "Reserves stock" --properties '{"method":"POST"}' --evidences '[{"source":"src/orders/client.py"}]'
+""",
+    "nodes": r"""
+graph nodes - Get one node by ID, or list and filter nodes
+
+USAGE
+  graph nodes [ID] [--type TYPES] [--properties JSON] [--p.KEY=VALUE ...] [--prefix TEXT] [--suffix TEXT] [--contains TEXT] [--limit N] [--fields FIELDS]
+
+ARGUMENTS
+  ID   Exact node ID. Returns the full record directly (no list envelope). Cannot be combined with filters or --fields
+
+FILTERS (combined with AND)
+  --type TYPES          One or more types, comma-separated (multiple types combine with OR)
+  --properties JSON     Match every given key/value exactly; extra properties on the node are allowed
+  --p.KEY=VALUE         Match one property; repeatable. String values compare case-insensitively
+  --prefix TEXT         Name starts with TEXT (case-insensitive)
+  --suffix TEXT         Name ends with TEXT (case-insensitive)
+  --contains TEXT       Name contains TEXT (case-insensitive)
+
+OUTPUT CONTROL
+  --limit N             Positive cap on rows, applied after filtering
+  --fields FIELDS       Comma-separated subset of: id, type, name, description, properties, metadata, evidences
+
+OUTPUT
+  {"rows":[...],"total":N,"truncated":bool}. "total" is counted after filtering but before --limit.
+  Rows are full node records unless --fields is used. Order follows graph.json.
+
+EXAMPLES
+  graph nodes
+  graph nodes orders-api
+  graph nodes --type=API,WORKER --contains=order
+  graph nodes --p.language=python --limit=10 --fields=id,name,type
+""",
+    "edges": r"""
+graph edges - Get one edge by ID, or list and filter edges
+
+USAGE
+  graph edges [EDGE_ID] [--type TYPES] [--properties JSON] [--p.KEY=VALUE ...] [--from SOURCE_ID] [--to TARGET_ID] [--limit N] [--fields FIELDS]
+
+ARGUMENTS
+  EDGE_ID   Exact edge ID. Returns the full record directly and cannot be combined with filters
+
+FILTERS (combined with AND)
+  --type TYPES          One or more edge types, comma-separated (OR between them). Each must exist in the contract
+  --properties JSON     Match every given key/value exactly
+  --p.KEY=VALUE         Match one property; repeatable. String values compare case-insensitively
+  --from SOURCE_ID      Edges leaving this node (must exist)
+  --to TARGET_ID        Edges arriving at this node (must exist)
+
+OUTPUT CONTROL
+  --limit N             Positive cap on rows, applied after filtering
+  --fields FIELDS       Comma-separated subset of: id, type, source, target, target_type, description, properties, metadata, evidences
+
+OUTPUT
+  {"rows":[...],"total":N,"truncated":bool}.
+  Default rows are compact tuples [source,type,target,target_type], sorted by source, type, target, then edge ID.
+  Use --fields (include "id") when you need edge IDs for `graph edit` or `graph delete`.
+
+EXAMPLES
+  graph edges --type=CALLS --from=orders-api --limit=10
+  graph edges --to=stock-api --p.method=GET --fields=id,type,source,target,description
+  graph edges 6c7f7d2c-22f0-49d2-a7f3-37d9b8cb0988
+""",
+    "search": r"""
+graph search - Find text across nodes and edges
+
+USAGE
+  graph search TERM [TERM ...] [--any] [--not TERM ...] [--in FIELDS] [--kind nodes|edges|all] [--type TYPES] [--regex] [--case-sensitive] [--limit N] [--offset N] [--fields FIELDS | --snippets]
+
+MATCHING
+  TERM ...            Terms are ANDed by default. Matching is a case-insensitive substring
+  --any               OR the positive terms instead
+  --not TERM          Exclude records matching TERM; repeatable
+  --regex             Treat terms as Python regular expressions
+  --case-sensitive    Case-sensitive matching (also applies to regex)
+
+SCOPE
+  --in FIELDS         Fields to search: id, name, type, description, properties, evidences, source, target (inapplicable fields are ignored per record kind)
+  --kind KIND         nodes, edges, or all (default: all)
+  --type TYPES        Only records of these node or edge types
+
+OUTPUT CONTROL
+  --limit N           Positive page size
+  --offset N          Skip N results (use next_offset from the previous page)
+  --snippets          Add an excerpt (about 60 chars) per matched field
+  --fields FIELDS     Return arrays of selected values. Allowed: id, type, name, source, target, description, properties, metadata, evidences. Cannot be combined with --snippets
+
+OUTPUT
+  {"rows":[...],"total":N,"truncated":bool,"next_offset":N|null}
+  Node rows: ["node",id,type,name,matched_fields]. Edge rows: ["edge",source,type,target,matched_fields].
+  Results keep graph node order, followed by the normal sorted edge order.
+
+NOTES
+  Use `graph nodes` / `graph edges` when you know the structure; use search when you do not know where a phrase appears.
+  A term starting with "--" must come after a standalone "--".
+  Regex has no timeout: a pathological pattern can be slow on large evidence text.
+  Errors are JSON with codes: empty_query, invalid_regex, unknown_field, unknown_kind, unknown_type.
+
+EXAMPLES
+  graph search payment billing --kind=nodes
+  graph search --regex "payment|billing" stripe --any --limit=20
+  graph search timeout --not retry --in=description,evidences --snippets
+  graph search -- --literal
+""",
+    "edit": r"""
+graph edit - Update an existing node or edge in place
+
+USAGE
+  graph edit node ID [--name TEXT] [--description TEXT] [--properties JSON | --p.KEY=VALUE ...] [--evidences JSON_ARRAY]
+  graph edit edge EDGE_ID [--description TEXT] [--properties JSON | --p.KEY=VALUE ...] [--evidences JSON_ARRAY]
+
+OPTIONS
+  --name TEXT             (node only) Replace the display name
+  --description TEXT      Replace the description; an empty value clears it
+  --properties JSON       Replace ALL properties
+  --p.KEY=VALUE           Update only the named keys and keep the rest; repeatable. Cannot be combined with --properties
+  --evidences JSON_ARRAY  Replace the full evidence list; [] clears it
+
+NOTES
+  At least one option is required; omitted fields are preserved.
+  IDs, types, and edge endpoints cannot be edited: delete and recreate instead.
+  Contracts are revalidated, and edges recheck the duplicate/parallel rules. updated_at is refreshed.
+
+OUTPUT
+  The updated complete record.
+
+EXAMPLES
+  graph edit node orders-api --name "Orders service"
+  graph edit node orders-api --p.framework=FastAPI
+  graph edit edge 6c7f7d2c-22f0-49d2-a7f3-37d9b8cb0988 --description "Uses the stock lookup" --p.method=GET
+  graph edit node orders-api --evidences '[]'
+""",
+    "delete": r"""
+graph delete - Remove a node or an edge
+
+USAGE
+  graph delete node ID
+  graph delete edge EDGE_ID
+  graph delete edge SOURCE_ID EDGE_TYPE TARGET_ID
+
+FORMS
+  node ID                         Deletes the node AND every edge connected to it
+  edge EDGE_ID                    Deletes exactly one edge by ID
+  edge SOURCE EDGE_TYPE TARGET    Deletes the edge if exactly one matches (type is case-insensitive; both endpoints must exist)
+
+OUTPUT
+  The deleted record. Node deletion also reports "deleted_edges" (the number of removed edges).
+
+NOTES
+  If the SOURCE/TYPE/TARGET form matches several edges, nothing is deleted and the candidate IDs are printed. Re-run with a specific EDGE_ID.
+  Deletion cannot be undone.
+
+EXIT CODES
+  0   Deleted
+  2   Ambiguous edge selection (graph unchanged) or invalid usage
+
+EXAMPLES
+  graph delete node orders-api
+  graph delete edge 6c7f7d2c-22f0-49d2-a7f3-37d9b8cb0988
+  graph delete edge orders-api CALLS stock-api
+""",
+    "traverse": r"""
+graph traverse - Explore the neighborhood of a node (breadth-first)
+
+USAGE
+  graph traverse NODE_ID [--depth N] [--direction in|out|both] [--edge TYPES] [--limit N] [--fields FIELDS]
+
+ARGUMENTS
+  NODE_ID   Anchor node (always included in the result)
+
+OPTIONS
+  --depth N            Maximum hops, positive integer (default: 1)
+  --direction DIR      out follows edges to their targets, in follows them back to their sources, both follows either (default: both)
+  --edge TYPES         Only follow these edge types (comma-separated, case-insensitive)
+  --limit N            Maximum reached nodes, excluding the anchor
+  --fields FIELDS      Return node objects with these fields instead of tuples. Allowed: id, type, name, description, properties, metadata, evidences
+
+OUTPUT
+  {"nodes":[...],"edges":[...],"truncated":bool}
+  Nodes are [id,type,name] tuples (anchor first). Edges are [source,type,target,target_type] in their stored orientation, even when traversing "in".
+  The edge list can include cross-links and cycle-closing edges.
+  truncated is true only when --limit excluded reachable nodes (reaching --depth does not set it).
+
+EXAMPLES
+  graph traverse orders-api
+  graph traverse orders-api --depth=2 --direction=out --edge=CALLS --limit=20
+  graph traverse orders-api --fields=id,name,description
+""",
+    "path": r"""
+graph path - Find simple paths between two nodes
+
+USAGE
+  graph path SOURCE_ID TARGET_ID [--direction out|in|both] [--edge TYPES] [--max-depth N] [--limit N] [--fields FIELDS]
+
+ARGUMENTS
+  SOURCE_ID   Starting node
+  TARGET_ID   Destination node
+
+OPTIONS
+  --direction DIR     out follows edges forward, in follows them backward, both follows either (default: out)
+  --edge TYPES        Only follow these edge types (comma-separated, case-insensitive)
+  --max-depth N       Maximum hops, 0 or greater (default: node count - 1). 0 allows only a same-node, zero-hop path
+  --limit N           Maximum paths to return (default: 1)
+  --fields FIELDS     Return node objects with these fields instead of tuples. Allowed: id, type, name, description, properties, metadata, evidences
+
+OUTPUT
+  {"paths":[{"nodes":[...],"edges":[...],"hops":N}],"truncated":bool}
+  Nodes are [id,type,name]. Edges are [edge_id,source,type,target,target_type] in stored orientation.
+  Paths are ordered shortest first with deterministic tie-breaking. No route gives "paths":[].
+  truncated means another path exists beyond --limit; it does not mean the search was cut off.
+
+NOTES
+  Simple paths never revisit a node. Parallel edges produce distinct paths.
+  On dense graphs, always set --max-depth, --edge, and a modest --limit.
+
+EXAMPLES
+  graph path orders-api database
+  graph path orders-api database --direction=both --edge=CALLS,READS --max-depth=6 --limit=5
+""",
+    "view": r"""
+graph view - Generate an interactive HTML visualization
+
+USAGE
+  graph view [--no-open]
+
+OPTIONS
+  --no-open   Write the file but do not open the system browser
+
+OUTPUT
+  JSON with the absolute "path" of the page, node and edge counts, and "opened" status.
+
+NOTES
+  Writes a self-contained page to .graph/view.html (overwritten on each run). graph.json is not modified.
+  Requires an initialized workspace.
+  AI agents and headless environments: pass --no-open.
+
+EXAMPLES
+  graph view
+  graph view --no-open
+""",
 }
+
+# Entries are written with leading/trailing newlines for readability; strip them here.
+HELP_TEXTS = {name: text.strip("\n") for name, text in _RAW.items()}

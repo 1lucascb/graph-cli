@@ -340,11 +340,15 @@ For example, this JSONL file contains two API nodes followed by two
 directed `CALLS` edges. It uses the starter contracts created by `graph init`:
 
 ```jsonl
-{"kind":"node","id":"web-api","type":"API","name":"Web API","properties":{"language":"Python"}}
-{"kind":"node","id":"billing-api","type":"API","name":"Billing API","properties":{"language":"Python"}}
-{"kind":"edge","type":"CALLS","source":"web-api","target":"billing-api","description":"Requests payment processing.","properties":{"protocol":"HTTP"}}
-{"kind":"edge","type":"CALLS","source":"billing-api","target":"web-api","description":"Returns the payment result.","properties":{"protocol":"HTTP"}}
+{"kind":"node","id":"web-api","type":"API","name":"Web API","properties":{"language":"Python"},"evidences":[{"source":"src/web_api.py","locator":{"start_line":1,"end_line":12},"note":"Defines the web API application."}]}
+{"kind":"node","id":"billing-api","type":"API","name":"Billing API","properties":{"language":"Python"},"evidences":[{"source":"src/billing_api.py","locator":{"start_line":1,"end_line":10},"note":"Defines the billing API application."}]}
+{"kind":"edge","type":"CALLS","source":"web-api","target":"billing-api","description":"Requests payment processing.","properties":{"protocol":"HTTP"},"evidences":[{"source":"src/web_api.py","locator":{"start_line":42,"end_line":49},"note":"Sends payment requests to the billing API."}]}
+{"kind":"edge","type":"CALLS","source":"billing-api","target":"web-api","description":"Returns the payment result.","properties":{"protocol":"HTTP"},"evidences":[{"source":"src/billing_api.py","locator":{"start_line":31,"end_line":38},"note":"Returns payment results to the web API."}]}
 ```
+
+**Important:** *Evidence is stored in each node or edge's `evidences` array. Each evidence item
+must be an object, but its fields and nested structure are **user-defined**; choose
+the format that best represents how you want to record and organize evidence.*
 
 Save the lines as `records.jsonl` and import them with `graph import records.jsonl`.
 Each JSON object must be on its own line, and edge endpoints must match node
