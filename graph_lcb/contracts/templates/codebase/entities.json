@@ -1,0 +1,9 @@
+{
+  "$schema": "./schemas/entities.schema.json",
+  "REPOSITORY": { "description": "A source code repository or independently versioned project.", "properties": { "url": "string", "language": "string" } },
+  "API": { "description": "An application service that exposes an interface to callers.", "properties": { "language": "string", "framework": "string" } },
+  "WORKER": { "description": "A background process that handles asynchronous or scheduled work.", "properties": { "language": "string", "framework": "string" } },
+  "DATASTORE": { "description": "A database or other persistent data store.", "properties": { "technology": "string" } },
+  "QUEUE": { "description": "A queue or stream used to pass work between components.", "properties": { "technology": "string" } },
+  "EXTERNAL_SYSTEM": { "description": "A system outside the mapped codebase that it interacts with.", "properties": { "owner": "string" } }
+}

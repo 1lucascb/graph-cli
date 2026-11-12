@@ -60,7 +60,8 @@ Evidence objects are **free-form**, but use these fields consistently so the gra
 ## Quick start
 
 ```sh
-graph init                                   # create .graph/ with starter contracts
+graph init --template=name               # create editable example contracts
+graph init                                   # create empty contracts to define yourself
 graph contract --compact                     # see available types and properties
 graph add-node orders-api "Orders API" API --p.language=Python
 graph add-node stock-api "Stock API" API --p.language=Go
@@ -75,7 +76,7 @@ For anything beyond a handful of records, switch to the batch workflow in `refer
 
 | Command | Purpose | Key facts |
 | --- | --- | --- |
-| `init` | Create `.graph/`, starter contracts, schemas | Safe to rerun, never overwrites |
+| `init` | Create `.graph/`, empty contracts or a template, schemas | Safe to rerun; existing types are preserved |
 | `contract [entities\|edges] [--compact]` | Show contracts | Works before init |
 | `validate` | Check contracts and records | Read-only; exit 3 invalid, 4 unavailable |
 | `status [--check=...] [--limit N] [--strict]` | Totals and quality findings | Orphans, missing evidence/description, components |
@@ -113,6 +114,7 @@ When a command fails, read the JSON error first. It usually names the exact prob
 - **`--properties` replaces everything; `--p.KEY` updates one key.** On `edit`, `--properties '{"a":1}'` drops all other properties.
 - **`--evidences` always replaces the whole list.** To add one evidence, read the current list, append, and write it back.
 - **Missing `graph.json` is normal** right after `graph init`. It is created on the first write.
+- **Templates are examples.** Check whether the contract can express the user's domain; edit it or propose changes before adding records.
 - **Contracts support only `string`, `number`, `integer`, `boolean`.** No arrays or nested objects in properties. Put structured data in `evidences`, or split it into extra nodes.
 
 ## Getting help from the CLI itself

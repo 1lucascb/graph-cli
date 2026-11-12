@@ -1,0 +1,9 @@
+{
+  "$schema": "./schemas/edges.schema.json",
+  "CONTAINS": { "description": "A repository contains or owns a component.", "source": ["REPOSITORY"], "target": ["API", "WORKER", "DATASTORE", "QUEUE"], "properties": {} },
+  "CALLS": { "description": "An API or worker synchronously invokes another component.", "source": ["API", "WORKER"], "target": ["API", "EXTERNAL_SYSTEM"], "properties": { "protocol": "string" } },
+  "READS": { "description": "A component reads data from a datastore.", "source": ["API", "WORKER"], "target": ["DATASTORE"], "properties": {} },
+  "WRITES": { "description": "A component writes data to a datastore.", "source": ["API", "WORKER"], "target": ["DATASTORE"], "properties": {} },
+  "PUBLISHES": { "description": "A component publishes messages to a queue or stream.", "source": ["API", "WORKER"], "target": ["QUEUE"], "properties": {} },
+  "CONSUMES": { "description": "A worker consumes messages from a queue or stream.", "source": ["WORKER"], "target": ["QUEUE"], "properties": {} }
+}

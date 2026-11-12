@@ -1,6 +1,6 @@
 [project] # Declares the package's standard project metadata.
 name = "graph-lcb" # Distribution name users give to pip when installing the package.
-version = "0.5.2" # Current release version, following the usual MAJOR.MINOR.PATCH format.
+version = "0.5.3" # Current release version, following the usual MAJOR.MINOR.PATCH format.
 description = "A local CLI for managing JSON-backed graphs with customizable entity and edge types." # Short description shown by package indexes.
 readme = "README.md" # Uses this file as the long package description.
 requires-python = ">=3.10" # Required for dataclass slots and PEP 604 union type syntax.
@@ -24,5 +24,5 @@ include = ["graph_lcb*"] # Includes the consolidated graph_lcb package and its s
 
 [tool.setuptools.package-data] # Includes non-Python resource files inside the packages.
 "graph_lcb.commands" = ["visualization-templates/*.html"] # Packages the HTML visualization template used by the CLI.
-"graph_lcb.schemas" = ["*.json"] # Packages the JSON schemas copied by the graph init command.
+"graph_lcb.contracts" = ["schemas/*.json", "templates/*/*.json"] # Bundles schemas and init templates.
 "graph_lcb" = ["skills/graph-lcb/SKILL.md", "skills/graph-lcb/references/*.md"] # Bundles the agent skill installed by graph install-skill.

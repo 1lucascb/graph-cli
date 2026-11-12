@@ -29,7 +29,7 @@ graph contract --compact          # readable summary
 graph contract entities           # JSON, entity types only
 graph contract edges
 ```
-`graph contract` works before `graph init` and shows the built-in starter (`API` and `CALLS`) without writing files.
+`graph contract` works before `graph init` and shows empty contracts without writing files. `graph init --list-templates` lists editable examples; apply one with `graph init --template=codebase` or `--template=documents`. Templates are starting points and should be adapted to the domain.
 
 ## 2. Format and rules
 
@@ -73,7 +73,7 @@ Rules:
 
 ## 3. Creating a contract from scratch
 
-Use this when the workspace was just initialized, the contract is still the starter, or the user describes a new domain.
+Use this when the workspace was just initialized, a template was applied, or the user describes a new domain. If the contract is empty or a template was applied, check that it can express the user's domain. If it can't, propose changes to the user before adding records.
 
 ### Step 1: understand the questions the graph must answer
 Ask the user (or infer from the task) what they want to ask later. Examples: "which services depend on X?", "which document describes decision Y?", "what data does this job touch?". Types and edges exist to answer those questions. Anything that does not help a real question stays out.

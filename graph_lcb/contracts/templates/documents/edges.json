@@ -1,0 +1,7 @@
+{
+  "$schema": "./schemas/edges.schema.json",
+  "DEFINES": { "description": "A document defines or explains a concept.", "source": ["DOCUMENT"], "target": ["CONCEPT"], "properties": {} },
+  "DECIDES": { "description": "A document records a decision.", "source": ["DOCUMENT"], "target": ["DECISION"], "properties": {} },
+  "SUPERSEDES": { "description": "A decision replaces an earlier decision.", "source": ["DECISION"], "target": ["DECISION"], "properties": {} },
+  "REFERENCES": { "description": "A document or concept refers to another document or concept.", "source": ["DOCUMENT", "CONCEPT", "DECISION"], "target": ["DOCUMENT", "CONCEPT", "DECISION"], "properties": {} }
+}

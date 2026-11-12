@@ -39,21 +39,32 @@ EXAMPLES
 graph init - Create the .graph/ workspace
 
 USAGE
-  graph init
+  graph init [--template NAME] [--dry-run]
+  graph init --list-templates
 
 DESCRIPTION
-  Creates .graph/, the starter entities.json and edges.json contracts, and any missing bundled JSON Schemas under .graph/schemas/.
+  Creates .graph/, empty contracts containing only their $schema keys, and any missing bundled JSON Schemas. Templates provide editable starting contracts.
+
+OPTIONS
+  --template NAME    Apply a bundled template (codebase or documents) to empty contracts
+  --list-templates   List bundled templates and descriptions without reading the workspace
+  --dry-run          Show files that would be created without writing them
 
 OUTPUT
-  {"initialized":true,"directory":".graph"}
+  Includes initialized, directory, and contracts (empty, template, or existing).
+  Template runs also include template and applied. Dry runs include would_write.
 
 NOTES
-  Safe to rerun: existing contracts, schemas, and graph data are never overwritten.
+  Safe to rerun: contracts containing types, schemas, and graph data are never overwritten. Empty contracts can receive a template.
+  Templates are starting points. Review and edit them for the project's domain.
   Does not create graph.json; it is written the first time a record is added.
   Run it from the project whose .graph/ you want to use (the workspace is resolved from the current directory).
 
 EXAMPLES
   graph init
+  graph init --list-templates
+  graph init --template=codebase
+  graph init --template documents --dry-run
 """,
     "install-skill": r"""
 graph install-skill DIRECTORY - Install the bundled graph-lcb agent skill
@@ -88,7 +99,7 @@ OUTPUT
   With --compact: plain text, not JSON. The $schema metadata is always omitted.
 
 NOTES
-  Works before `graph init`: prints the built-in starter contracts without writing any files.
+  Works before `graph init`: prints empty contracts without writing any files.
   AI agents: run this first to learn valid types and properties before adding records.
 
 EXAMPLES

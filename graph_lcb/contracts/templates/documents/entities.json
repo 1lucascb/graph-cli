@@ -1,0 +1,6 @@
+{
+  "$schema": "./schemas/entities.schema.json",
+  "DOCUMENT": { "description": "A document that records or communicates information.", "properties": { "path": "string", "date": "string" } },
+  "CONCEPT": { "description": "A named idea, term, or subject discussed in the knowledge base.", "properties": { "category": "string" } },
+  "DECISION": { "description": "A decision and its rationale recorded by the project or organization.", "properties": { "status": "string", "date": "string" } }
+}
