@@ -60,7 +60,7 @@ Evidence objects are **free-form**, but use these fields consistently so the gra
 ## Quick start
 
 ```sh
-graph init --template=name               # create editable example contracts
+graph init --template=codebase               # create editable example contracts
 graph init                                   # create empty contracts to define yourself
 graph contract --compact                     # see available types and properties
 graph add-node orders-api "Orders API" API --p.language=Python
