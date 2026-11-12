@@ -1,3 +1,3 @@
 {
-  "description": "Map repositories, services, workers, and their dependencies."
+  "description": "Map repositories down to packages, modules, files, tests, services, and external dependencies."
 }

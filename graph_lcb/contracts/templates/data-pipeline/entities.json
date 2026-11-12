@@ -1,0 +1,8 @@
+{
+  "$schema": "./schemas/entities.schema.json",
+  "PIPELINE": { "description": "A coordinated batch or streaming data workflow.", "properties": { "schedule": { "type": "string", "required": true }, "owner": "string" } },
+  "JOB": { "description": "A runnable step that transforms or moves data.", "properties": { "runtime": { "type": "string", "required": true }, "purpose": { "type": "string", "required": true } } },
+  "DATASET": { "description": "A named collection of structured or semi-structured data.", "properties": { "format": { "type": "string", "required": true }, "location": { "type": "string", "required": true } } },
+  "SOURCE_SYSTEM": { "description": "An upstream system that provides data to a pipeline.", "properties": { "system_kind": { "type": "string", "required": true } } },
+  "DESTINATION": { "description": "A downstream system or storage target receiving pipeline output.", "properties": { "destination_kind": { "type": "string", "required": true } } }
+}

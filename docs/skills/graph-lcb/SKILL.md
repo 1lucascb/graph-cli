@@ -65,7 +65,7 @@ graph init                                   # create empty contracts to define 
 graph contract --compact                     # see available types and properties
 graph add-node orders-api "Orders API" API --p.language=Python
 graph add-node stock-api "Stock API" API --p.language=Go
-graph add-edge orders-api CALLS stock-api --description "Checks stock" --p.protocol=HTTP
+graph add-edge orders-api CALLS stock-api --description "Checks stock" --p.call_kind=synchronous --p.protocol=HTTP
 graph traverse orders-api --depth=2 --direction=out
 graph status                                 # size, orphans, missing evidence
 ```

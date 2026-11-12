@@ -43,6 +43,9 @@ with `graph init --list-templates`; preview a run with
 complete model of your project: review and edit their contracts to fit the
 domain. Init fills missing or empty contracts and preserves contracts that
 already define types. Existing schemas and graph data are preserved.
+Available templates include `codebase`, `documents`, `data-pipeline`, and
+`research`. Their entity and edge types define required properties, so records
+of those types cannot be added with empty `properties` objects.
 Initialization does not create `graph.json`; the graph store is written when a
 record is first added.
 

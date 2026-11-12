@@ -46,7 +46,7 @@ DESCRIPTION
   Creates .graph/, empty contracts containing only their $schema keys, and any missing bundled JSON Schemas. Templates provide editable starting contracts.
 
 OPTIONS
-  --template NAME    Apply a bundled template (codebase or documents) to empty contracts
+  --template NAME    Apply a bundled template (codebase, documents, data-pipeline, research)
   --list-templates   List bundled templates and descriptions without reading the workspace
   --dry-run          Show files that would be created without writing them
 
