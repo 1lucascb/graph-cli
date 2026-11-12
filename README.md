@@ -39,7 +39,7 @@ graph init
 
 This copies the bundled JSON Schemas into `.graph/schemas/`. List templates
 with `graph init --list-templates`; preview a run with
-`graph init --template=codebase --dry-run`. Templates are examples, not a
+`graph init --template=template_name --dry-run`. Templates are examples, not a
 complete model of your project: review and edit their contracts to fit the
 domain. Init fills missing or empty contracts and preserves contracts that
 already define types. Existing schemas and graph data are preserved.
@@ -348,8 +348,7 @@ as nodes. The `kind` marker is removed before the record is stored. Edge records
 may omit `id`, in which case an ID is generated.
 
 For example, this JSONL file contains two API nodes followed by two
-directed `CALLS` edges. It uses a codebase template contract (apply it with
-`graph init --template=codebase`):
+directed `CALLS` edges:
 
 ```jsonl
 {"kind":"node","id":"web-api","type":"API","name":"Web API","properties":{"language":"Python"},"evidences":[{"source":"src/web_api.py","locator":{"start_line":1,"end_line":12},"note":"Defines the web API application."}]}
