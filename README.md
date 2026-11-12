@@ -59,15 +59,14 @@ the project whose `.graph/` you intend to access.
 
 ## AI agents and skills
 
-When using an AI agent to explore this graph, start with the
-[graph-query skill](docs/skills/graph-query/SKILL.md). It guides agents to check
-the contract, confirm node IDs, and choose between `nodes`, `edges`, `traverse`,
-and `path` queries.
+Install the bundled graph-lcb skill into a project with:
 
-To build a thorough, evidence-backed map of a codebase, use the
-[graph-batch-import skill](docs/skills/graph-batch-import/SKILL.md). It guides
-agents to gather evidence, prepare one JSONL batch, dry-run it, and import the
-complete batch atomically.
+```sh
+graph install-skill .
+```
+
+This creates `./graph-lcb/` with `SKILL.md` and its `references/` files. The
+destination is left untouched if `graph-lcb/` already exists.
 
 You can create additional skills for the tasks and knowledge your project needs,
 such as documenting sources, mapping systems, or exploring flows, processes,
