@@ -1,12 +1,12 @@
 # Contracts: creating, extending, and repairing
 
-Use this file when the contracts are empty or still the starter ones, when the user wants new types or properties, or when `graph validate` started failing after a contract change.
+Use this file when starting a new graph (empty contracts or a freshly applied template), when the user wants new types or properties, when mapping reveals something the contract cannot express, or when `graph validate` started failing after a contract change.
 
 ## Contents
 1. What a contract is
 2. Format and rules
-3. Creating a contract from scratch
-4. Design guidelines
+3. Creating a contract for a new graph
+4. Design guidelines: granularity and properties
 5. Example contracts
 6. Changing a contract safely
 7. Change playbooks
@@ -29,7 +29,7 @@ graph contract --compact          # readable summary
 graph contract entities           # JSON, entity types only
 graph contract edges
 ```
-`graph contract` works before `graph init` and shows empty contracts without writing files. `graph init --list-templates` lists editable examples; apply one with `graph init --template=codebase` or `--template=documents`. Templates are starting points and should be adapted to the domain.
+`graph contract` works before `graph init` and shows empty contracts without writing files. `graph init --list-templates` lists editable examples; apply one with `graph init --template=codebase` or `--template=documents`. Templates (for example `codebase`, `documents`, `data-pipeline`, `research`) are **a base to adapt, never a finished contract**: review them, then add, remove, and reshape types and properties until they fit the domain (section 3).
 
 ## 2. Format and rules
 
@@ -71,47 +71,106 @@ Rules:
 - Supported property types: `string`, `number`, `integer`, `boolean`. `number` accepts integers and decimals, not booleans. `integer` accepts integers, not booleans. No null, arrays, or objects as property types.
 - `description` is optional at runtime but valuable: it is shown in `graph view` and read by agents. Always write one for each type.
 
-## 3. Creating a contract from scratch
+## 3. Creating a contract for a new graph
 
-Use this when the workspace was just initialized, a template was applied, or the user describes a new domain. If the contract is empty or a template was applied, check that it can express the user's domain. If it can't, propose changes to the user before adding records.
+Use this when the graph is new: empty contracts, or a template just applied, and no records yet. **Do not start adding records until the contract fits the domain.** A contract that fits is the foundation of precise retrieval.
 
-### Step 1: understand the questions the graph must answer
-Ask the user (or infer from the task) what they want to ask later. Examples: "which services depend on X?", "which document describes decision Y?", "what data does this job touch?". Types and edges exist to answer those questions. Anything that does not help a real question stays out.
+### Step 1: choose where the contract comes from
 
-### Step 2: list the nouns, then the verbs
-- **Nouns become entity types.** Things you can point at and name.
-- **Verbs become edge types.** Relationships you can state as `A <verb> B`.
+| Situation | Approach |
+| --- | --- |
+| The user is available | Build it **with the user**: find out what the graph should answer, propose a contract, confirm |
+| You can inspect the environment (codebase, documents, research material) | Build it **from what you observe**, then propose it to the user for confirmation |
+| Both | Observe first, then propose, so your questions are specific |
 
-### Step 3: keep it small
-Start with roughly 3 to 8 entity types and 3 to 8 edge types. Adding a type later is easy; removing or renaming one is painful (see section 7).
+Avoid open questions like "what contract do you want?". Observe, propose something concrete, and ask for corrections. If the user cannot answer, proceed with the observed contract, write your assumptions in `batches/PROGRESS.md`, and say so in your report.
 
-### Step 4: define properties sparingly
-Only add a property when you will filter or read it often (`language`, `environment`, `status`). Make it `required` only if you can always supply it. Everything else goes into `description` or `evidences`.
+### Step 2: observe the environment
+
+Look at what is actually there before deciding on types. These are suggestions for what to inspect and what it tends to reveal; adapt them to what you see.
+
+| Environment | Inspect | Entity types it suggests | Relationships it suggests |
+| --- | --- | --- | --- |
+| Codebase | Folder layout, manifests, Dockerfiles and compose files, routes, OpenAPI/proto files, HTTP/gRPC clients, ORM models and migrations, queue configs, IaC, CI, READMEs, ADRs, CODEOWNERS | `REPOSITORY`, `SERVICE` or `API`, `ENDPOINT`, `MODULE`, `WORKER`, `DATASTORE`, `TABLE`, `QUEUE`, `EXTERNAL_SYSTEM`, `LIBRARY`, `CONFIG_KEY`, `TEAM` | `CONTAINS`, `EXPOSES`, `CALLS`, `DEPENDS_ON`, `READS`, `WRITES`, `PUBLISHES`, `CONSUMES`, `CONFIGURED_BY`, `DEPLOYED_ON`, `OWNED_BY` |
+| Documents | Titles, headings, glossaries, ADRs, version numbers, cross-references | `DOCUMENT`, `SECTION`, `CONCEPT`, `DECISION`, `REQUIREMENT`, `STAKEHOLDER` | `DEFINES`, `DESCRIBES`, `DECIDES`, `SUPERSEDES`, `REFERENCES`, `SATISFIES`, `CONTRADICTS` |
+| Research material | Papers, notes, datasets, experiment logs, bibliographies | `PAPER`, `AUTHOR`, `CLAIM`, `METHOD`, `DATASET`, `EXPERIMENT`, `RESULT`, `TOPIC` | `CITES`, `AUTHORED_BY`, `SUPPORTS`, `CONTRADICTS`, `USES_METHOD`, `USES_DATASET`, `REPORTS` |
+| Data pipelines | Job definitions, DAGs, schemas, table lists, schedules | `JOB`, `DATASET`, `TABLE`, `SCHEMA`, `SOURCE_SYSTEM`, `SINK` | `READS`, `WRITES`, `TRANSFORMS`, `DEPENDS_ON`, `SCHEDULED_BY` |
+| Infrastructure | IaC, manifests, cloud inventories | `CLUSTER`, `NAMESPACE`, `DEPLOYMENT`, `BUCKET`, `NETWORK` | `HOSTED_ON`, `ROUTES_TO`, `DEPENDS_ON` |
+
+While observing, note the **facts you will want to filter by** (language, version, environment, owner, status, protocol). They become properties (section 4).
+
+### Step 3: start from a template when one fits
+
+```sh
+graph init --list-templates
+graph init --template=codebase --dry-run     # preview
+graph init --template=codebase               # apply
+graph contract --compact                     # read what you got
+```
+
+A template is a base. After applying one:
+1. **Compare it with what you observed.** Which types are missing? Which are irrelevant?
+2. **Adapt it while the graph is empty**, when changes are free: add types, edge types, and properties; remove types you will not use; rename types to the user's vocabulary.
+3. **Relax required properties** you cannot always supply. Templates define required properties, so records of those types cannot be added with an empty `properties` object until the contract matches reality.
+4. **Never map with a template you have not reviewed.**
+
+If no template fits, run a plain `graph init` and write the contract from scratch. `init` never overwrites a contract that already defines types.
+
+### Step 4: propose and confirm
+
+Present a concrete proposal and ask once. For example:
+
+```text
+Proposed contract (based on the codebase template, adapted)
+Entity types: SERVICE (language*, framework, owner), ENDPOINT (method*, path*), DATASTORE (engine*, version),
+              QUEUE (technology), EXTERNAL_SYSTEM (vendor), TEAM
+Edge types:   CALLS (SERVICE -> SERVICE; protocol, method), EXPOSES (SERVICE -> ENDPOINT),
+              READS / WRITES (SERVICE -> DATASTORE), PUBLISHES / CONSUMES (SERVICE -> QUEUE),
+              OWNED_BY (SERVICE -> TEAM), DEPENDS_ON (SERVICE -> SERVICE | EXTERNAL_SYSTEM)
+Assumptions:  <what you inferred and from where>
+Not modeled:  <what you left out on purpose>
+Questions:    <at most two or three, specific>
+```
+(`*` marks required properties.) Proceed after confirmation, or adjust if the user corrects you.
 
 ### Step 5: write the files
 Edit `.graph/entities.json` and `.graph/edges.json` (keep the `$schema` lines).
 
-### Step 6: validate before using
+### Step 6: validate and try it
 ```sh
 graph validate
 graph contract --compact
 ```
-An empty graph validates cleanly if the contracts are structurally sound. Fix any contract errors now, while no data depends on them.
+Then add two nodes and one edge with `add-node` / `add-edge`, confirm they are accepted, and `graph delete` them (or keep them if they are real). This catches endpoint mistakes early.
 
-### Step 7: try it with real records
-Add two nodes and one edge with `add-node` / `add-edge`, confirm they are accepted, then `graph delete` them (or keep them if they are real). This catches endpoint mistakes early.
+### Step 7: expect the contract to grow
+Mapping will reveal things you did not anticipate. That is normal: extend the contract when it happens (section 6, "During mapping"), and do not force data into the wrong type.
 
-## 4. Design guidelines
+## 4. Design guidelines: granularity and properties
 
-- **Entity type names:** singular, `UPPER_SNAKE_CASE` nouns (`API`, `WORKER`, `DATASTORE`, `DOCUMENT`).
-- **Edge type names:** `UPPER_SNAKE_CASE` verbs, read as `SOURCE VERB TARGET` (`CALLS`, `READS`, `PUBLISHES`, `DEPENDS_ON`, `DESCRIBES`). The direction should be obvious from the name.
-- **Prefer specific edges over a generic one.** `READS`/`WRITES` is better than one `ACCESSES` plus a property, because you can filter with `--edge=READS` in `traverse` and `path`.
-- **Use endpoint lists to encode meaning.** `READS: source [API, WORKER], target [DATASTORE]` makes invalid relationships impossible to write.
-- **One concept, one type.** If two types differ only by a property value (for example `INTERNAL_API` and `EXTERNAL_API`), use one type and a property (`visibility`) unless you need different endpoint rules.
-- **Properties are for facts you filter on**, not prose. Long text belongs in `description`.
-- **Required means always known.** A required property you often lack will cause failed imports and invented values.
-- **Write a `description` for every type** so a future agent knows when to use it.
+### Granularity
+- **Specific types beat generic ones.** Create a type when you would filter by it (`--type=`), when it has its own properties, when it takes part in different relationships, or when merging it with another type would blur answers.
+- **There is no fixed cap on the number of types.** Each type should be justified by something you have seen or will map soon. Remove speculative types that no source supports (while the graph is still empty, this is free).
+- **Several edge types between the same node types is a feature.** `CALLS`, `DEPENDS_ON`, and `CONFIGURED_BY` between two services each answer a different question. Prefer `READS`/`WRITES` over one `ACCESSES` plus a property, because `--edge=READS` in `traverse` and `path` then works directly.
+- **Use endpoint lists to encode meaning.** `READS: source [SERVICE, WORKER], target [DATASTORE, TABLE]` makes invalid relationships impossible to write.
+- **One concept, one type** unless the differences matter. If two types differ only by a property value (for example `INTERNAL_API` and `EXTERNAL_API`), use one type and a property (`visibility`), unless they need different endpoint rules or different properties.
 - **Avoid a catch-all type** (`THING`, `OTHER`). It makes queries ambiguous and defeats validation.
+
+### Properties
+Properties are retrieval handles: they are what `--p.KEY=VALUE` and `--properties` filter on. Define them **generously** for facts you can verify from the sources and that someone might filter or read.
+- **Identification:** language, framework, version, runtime, format.
+- **Operations:** environment, port, owner, region, schedule.
+- **Semantics:** status, visibility, criticality, kind.
+- **Edge properties** matter too: protocol, method, path, sync or async, authentication, frequency.
+- **Required only if always known.** A required property you often lack causes failed imports and invented values. Everything else stays optional.
+- **Scalars only** (`string`, `number`, `integer`, `boolean`). For a closed set of values, use a `string` and list the allowed values in the type's `description` (for example "status: active, deprecated, retired").
+- **Long prose belongs in `description`**, and structured detail belongs in `evidences` or in extra nodes.
+- **If you keep writing the same fact into descriptions, add a property for it.**
+
+### Naming and documentation
+- **Entity type names:** singular, `UPPER_SNAKE_CASE` nouns (`SERVICE`, `DATASTORE`, `DOCUMENT`).
+- **Edge type names:** `UPPER_SNAKE_CASE` verbs, read as `SOURCE VERB TARGET` (`CALLS`, `READS`, `PUBLISHES`, `DEPENDS_ON`, `DESCRIBES`). The direction should be obvious from the name.
+- **Write a `description` for every type**, including when to use it, so a future agent picks the right one.
 
 ## 5. Example contracts
 
@@ -152,6 +211,26 @@ Add two nodes and one edge with `add-node` / `add-edge`, confirm they are accept
 }
 ```
 
+### Granularity in practice
+
+Coarse contract: two services, one relationship.
+```json
+{ "CALLS": { "description": "Service calls service", "source": ["SERVICE"], "target": ["SERVICE"], "properties": {} } }
+```
+
+Granular contract: the same two services can now be related in several useful ways, and the question "which endpoint writes this table" has an answer.
+```json
+{
+  "CALLS":         { "description": "Synchronous call", "source": ["SERVICE", "WORKER"], "target": ["SERVICE"], "properties": { "protocol": "string", "method": "string", "path": "string" } },
+  "DEPENDS_ON":    { "description": "Build or runtime dependency without a direct call", "source": ["SERVICE", "WORKER"], "target": ["SERVICE", "LIBRARY", "EXTERNAL_SYSTEM"], "properties": { "kind": "string" } },
+  "EXPOSES":       { "description": "Service exposes an endpoint", "source": ["SERVICE"], "target": ["ENDPOINT"], "properties": {} },
+  "HANDLES":       { "description": "Endpoint is implemented by a module", "source": ["ENDPOINT"], "target": ["MODULE"], "properties": {} },
+  "WRITES":        { "description": "Writes data to", "source": ["ENDPOINT", "WORKER", "SERVICE"], "target": ["TABLE", "DATASTORE"], "properties": { "operation": "string" } },
+  "CONFIGURED_BY": { "description": "Reads configuration from", "source": ["SERVICE", "WORKER"], "target": ["CONFIG_KEY"], "properties": {} }
+}
+```
+Two services can now have `CALLS`, `DEPENDS_ON`, and a shared `TABLE` they both `WRITES`, each with its own evidence and properties.
+
 ## 6. Changing a contract safely
 
 Always follow this loop:
@@ -167,6 +246,12 @@ Rules of thumb:
 - **Loosening is safe** (new type, new optional property, widening endpoint lists, making a required property optional). Existing data stays valid.
 - **Tightening is risky** (new required property, removing a property or type, narrowing endpoint lists, changing a property type). Existing records may become invalid.
 - `validate` is read-only and never repairs. You fix data with `edit` or `import --on-conflict=replace`.
+
+### During mapping: the contract is a living document
+- **When you find something the contract cannot express, extend it** instead of forcing data into the wrong type or dropping it. Extending is safe (loosening). Steps: edit the contract, `graph validate`, note it under "Contract changes" in `batches/PROGRESS.md`, and mention it to the user.
+- **Parallel producer agents do not edit the contract.** They stop and report the missing type or property to the orchestrator (mapping.md, section 13).
+- **Avoid renaming types mid-mapping.** It is the heavy procedure in the playbooks below. Add the right type and migrate deliberately if you must.
+- **Review the contract at the end of each pass.** Types with zero records and properties nobody filled are candidates for cleanup; missing properties are candidates for backfill.
 
 ## 7. Change playbooks
 
@@ -240,10 +325,13 @@ After a contract change, compare `by_type` counts with what you expect. A type w
 
 ## 10. Checklist
 
+- [ ] Source of the contract is clear: built with the user, or from observing the environment (and confirmed)
+- [ ] If a template was used, it was reviewed and adapted, not taken as is
 - [ ] Questions the graph must answer are written down
-- [ ] 3 to 8 entity types and edge types, with descriptions
-- [ ] Edge names read as `SOURCE VERB TARGET`, endpoints restricted on purpose
-- [ ] Required properties are things you can always supply
+- [ ] Types are specific and justified by sources; several edge types between the same node types where relationships differ
+- [ ] Properties defined for the facts you will filter or read (nodes and edges); required only when always known
+- [ ] Every type has a `description`; edge names read as `SOURCE VERB TARGET`; endpoints restricted on purpose
 - [ ] `graph validate` clean before and after changes
-- [ ] Backup made before any tightening change
+- [ ] Backup or commit made before any tightening change
 - [ ] `graph status` totals sanity-checked afterward
+- [ ] Contract changes noted in `batches/PROGRESS.md`

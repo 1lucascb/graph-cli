@@ -21,6 +21,7 @@ Use this file whenever you load more than a handful of records, prepare data for
 - **Order-free.** Nodes are staged before edges, so an edge may reference a node that appears later in the file.
 - **Reviewable.** A JSONL file can be read, diffed, committed, and handed to someone else.
 - **Cheap.** One command instead of dozens of `add-node` / `add-edge` calls.
+- **Incremental.** Numbered batches, one per area or pass, each imported and verified, build a graph step by step and leave a trail that others can resume (mapping.md, section 3).
 
 ## 2. Record format
 
@@ -44,7 +45,10 @@ One JSON object per line. No commas between lines, no wrapping array, no pretty-
 
 - **Stable IDs.** IDs are the identity of a node across re-imports. Derive them deterministically (for example `<repo>.<component>`), never from timestamps or random values. See mapping.md for conventions.
 - **One fact, one record.** Do not duplicate a node under two IDs; do not repeat the same edge.
+- **Batch size.** There is no size limit. Split files by area, pass, or document so each one is easy to track and review. Several hundred records or more per file is normal for a large area, so do not cut files into tiny pieces, and do not mix unrelated areas into one file. In a large file one bad line still aborts the import, but the dry run lists every error with its line number, so fix them all in one pass and rerun.
 - **Evidence on everything.** Missing evidence shows up later in `graph status --check=no-evidence`.
+- **Properties filled in.** Include every property the sources support. Properties are what make records findable with `--p.KEY` filters.
+- **All the relationships you can prove.** Two nodes can have several edges (different types, or the same type with different properties and a description). Do not stop at the first one (mapping.md, section 8).
 - **Descriptions on edges.** If two edges share endpoints, every additional one needs a non-empty description. Writing a description on every edge avoids the problem.
 - **Duplicates.** Same type + endpoints + properties is a duplicate even if descriptions differ, and is a conflict on import.
 - **Validate JSON yourself first** if you generate it with a script: `python -c "import json,sys; [json.loads(l) for l in open('file.jsonl')]"` catches syntax slips before the CLI does.
@@ -74,6 +78,7 @@ One JSON object per line. No commas between lines, no wrapping array, no pretty-
    graph status --check=orphans,no-evidence --limit=10
    ```
 8. **Spot-check** two or three records with `graph nodes ID`, and confirm evidence points at real files and lines.
+9. **Update `batches/PROGRESS.md`**: what this batch covered, what is still not covered, totals from `graph status`, and the exact next step.
 
 ## 5. Conflict modes
 
@@ -96,7 +101,7 @@ Guidance:
 
 ## 6. Keeping the batch history append-only
 
-Goal: the sequence of batch files is a permanent, reviewable ledger of how the graph was built.
+Goal: the sequence of batch files is a permanent, reviewable ledger of how the graph was built, and `batches/PROGRESS.md` says what each file covered and what is still missing.
 
 Recommended layout:
 
@@ -107,17 +112,19 @@ batches/
   0001-initial-inventory.jsonl
   0002-orders-edges.jsonl
   0003-fix-billing-evidence.jsonl
-  README.md              # optional: one line per batch (what, who, when, command used)
+  PROGRESS.md            # coverage ledger: covered, not covered yet, next step (template in mapping.md, section 3)
 ```
 
 Rules:
-1. **Never edit a batch file after it was imported.** Treat it as immutable.
-2. **Corrections are new batch files**, imported with `--on-conflict=replace` (with complete records). The history then shows what changed and why.
-3. **Additions are new batch files**, imported with `--on-conflict=skip` if overlap with earlier batches is possible.
-4. **Number the files** (`0001-`, `0002-`) so the order is obvious.
-5. **Do not append corrections to an old file.** If you must keep a single ledger file, append only brand-new IDs, never repeat an ID that already appears in the file, and always dry-run first. (Duplicate IDs inside one file are better avoided than relied upon.)
-6. **Deletions** are done with `graph delete`. Record them in the batches README (or a short note file) so the history stays truthful, because a replay of the batches alone would resurrect deleted records.
-7. **Commit batches together with `.graph/`.** The batch files are the "why", the graph is the "what".
+1. **Never edit a batch file after it was imported.** Treat it as immutable. This is what append-only means here: history only grows by adding new files.
+2. **Work incrementally.** Add a new numbered batch per area or pass instead of rewriting earlier ones.
+3. **Corrections are new batch files**, imported with `--on-conflict=replace` (with complete records). The history then shows what changed and why.
+4. **Additions are new batch files**, imported with `--on-conflict=skip` if overlap with earlier batches is possible.
+5. **Number the files** (`0001-`, `0002-`) so the order is obvious.
+6. **Do not append corrections to an old file.** If you must keep a single ledger file, append only brand-new IDs, never repeat an ID that already appears in the file, and always dry-run first. (Duplicate IDs inside one file are better avoided than relied upon.)
+7. **Deletions** are done with `graph delete`. Record them in `batches/PROGRESS.md` (section "Deletions and manual edits") so the history stays truthful, because a replay of the batches alone would resurrect deleted records.
+8. **Update `batches/PROGRESS.md` after every batch**, and before stopping. If a file is written but not imported yet, mark it "written, not imported".
+9. **Commit batches together with `.graph/`.** The batch files are the "why", the graph is the "what".
 
 ## 7. Handoff between agents
 
@@ -134,7 +141,7 @@ Each producer must:
 3. Prefix node IDs with its scope (for example `orders.*`) so parallel producers cannot collide. See mapping.md.
 4. Include evidence on every record.
 5. Run `graph import FILE --dry-run` **only if** a graph copy is available that cannot be written by others, otherwise skip it. (Dry runs do not write, but they read the shared graph, so results can differ from the final import.)
-6. Leave a short handoff note next to the file.
+6. Leave a short handoff note next to the file, including what was covered, what was not, and where it stopped.
 
 ### Handoff note template
 ```text
@@ -143,7 +150,10 @@ Scope: repository "orders" at commit abc1234
 Contents: 38 nodes (API 6, WORKER 2, DATASTORE 3, ...), 71 edges (CALLS 40, READS 21, ...)
 Depends on: nodes from 0001-initial-inventory.jsonl (billing-api, stock-api)
 Assumptions: <anything guessed or uncertain>
-Not covered: <what was intentionally skipped>
+Covered: <areas read completely, relationship sweep done or not>
+Not covered yet: <areas not read, or read only partially>
+Stopped at: <exact place, so work can continue>
+Not covered on purpose: <what was skipped and why>
 Suggested command: graph import batches/0004-repo-orders.jsonl --on-conflict=skip
 ```
 
@@ -154,7 +164,7 @@ For each batch, in order:
 3. Compare the `summary` counts to the note. Investigate any mismatch before importing.
 4. Import.
 5. `graph validate` and `graph status --check=orphans,no-evidence`.
-6. Record the result (counts, command) in the batches README.
+6. Record the result (counts, command) and the producer's coverage notes in `batches/PROGRESS.md`.
 
 If the dry run fails, send the error list back to the producer. Because errors include the input line number, the producer can fix exactly those lines.
 
@@ -185,7 +195,7 @@ Fix all errors listed in one pass, then dry-run again. The report lists every de
 
 ## 10. Worked example
 
-Contracts (starter): node type `API` with required `language`; edge type `CALLS` with optional `protocol`.
+Example contract: node type `API` with required `language`; edge type `CALLS` with optional `protocol`. (Your contract will differ; read it with `graph contract --compact` first.)
 
 `batches/0001-initial.jsonl`
 ```jsonl
@@ -211,10 +221,11 @@ graph import batches/0002-fix-stock-evidence.jsonl --on-conflict=replace
 
 - [ ] Contracts read; every type and property exists
 - [ ] Deterministic, scoped IDs
-- [ ] Evidence on every record
+- [ ] Evidence and supportable properties on every record
+- [ ] All evidenced relationships recorded, including multiple edges between the same nodes
 - [ ] Descriptions on edges
 - [ ] Backup or commit made
 - [ ] Dry run: `valid:true`, counts match expectations, conflict mode chosen on purpose
 - [ ] Only one importer running
 - [ ] `graph validate` and `graph status` after import
-- [ ] Batch file frozen; handoff note or README updated
+- [ ] Batch file frozen; `batches/PROGRESS.md` updated (covered, not covered yet, next step)

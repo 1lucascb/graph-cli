@@ -34,7 +34,7 @@ Two different problems, two different tools:
 ## 2. What you need in place
 
 1. **Evidence with `source` and `commit`.** The `commit` is what tells you *when* a claim was verified. Records without it can still be checked, but you cannot tell how old they are (section 10). Line locators (`locator`, or flat `start_line`/`end_line`) are used only when you refresh a record.
-2. **A record of what was mapped at which commit.** Keep it in `batches/README.md` or the maintenance log (section 9): one line per repository with the commit that was last fully verified.
+2. **A record of what was mapped at which commit.** Keep it in the coverage table of `batches/PROGRESS.md` (the `Commit/version read` column) or in the maintenance log (section 9): one line per repository with the commit that was last fully verified.
 3. **All repositories cloned under the workspace** (`repos/<name>`), as in mapping.md, so evidence paths like `repos/orders/src/api.py` resolve from the workspace root.
 4. **A clean starting point.** `graph validate`, `graph status`, and a commit or backup of `.graph/` before changing anything.
 
@@ -52,7 +52,7 @@ Know what was already broken, so you do not blame your refresh for it. Back up: 
 ### Step 2: compare commits
 ```sh
 git -C repos/orders rev-parse --short HEAD          # current
-grep orders batches/README.md                        # last verified commit (or your log)
+grep orders batches/PROGRESS.md                      # last verified commit (or your log)
 ```
 - Same commit: nothing changed for this repo. Skip to the next repo.
 - Check the old commit is still reachable: `git -C repos/orders merge-base --is-ancestor OLD HEAD`. If this fails (force push, shallow clone, history rewrite), you cannot diff reliably. Treat the whole repo as changed and use the sampling audit (section 8) or re-map it (mapping.md).
@@ -90,7 +90,7 @@ Read the worklist and keep only entries with results. **Affected records = the w
 For each affected record, open it (`graph nodes ID` or `graph edges EDGE_ID`), then open the cited file **at HEAD** and apply the decision table in section 4. Record the outcome next to each entry in the worklist (`ok`, `moved`, `changed`, `deleted`, `path-renamed`).
 
 ### Step 6: look for what is new
-Search cannot find things that were never mapped. For files with status `A`, and for modified files in areas that define structure (routes, clients, configs, manifests, infrastructure), re-run the relevant part of the inventory in mapping.md section 7. Check new files against existing nodes first (`graph search NAME --kind=nodes --in=id,name`) to avoid duplicates.
+Search cannot find things that were never mapped. For files with status `A`, and for modified files in areas that define structure (routes, clients, configs, manifests, infrastructure), re-run the relevant part of the inventory in mapping.md section 10. Check new files against existing nodes first (`graph search NAME --kind=nodes --in=id,name`) to avoid duplicates.
 
 ### Step 7: apply fixes
 See section 5. Use batches for many changes, `edit` or `delete` for a few.
@@ -168,7 +168,7 @@ graph import batches/0012-refresh-orders-abc1234.jsonl --on-conflict=replace
 For documents inside a git repository, the same commit-based workflow applies.
 
 For files outside git (shared drives, exports, PDFs):
-- Record a **content hash or modified date** per document in `batches/README.md` or the maintenance log when you map it (for example `sha256sum docs/architecture.pdf`).
+- Record a **content hash or modified date** per document in `batches/PROGRESS.md` or the maintenance log when you map it (for example `sha256sum docs/architecture.pdf`).
 - On refresh, recompute and compare. A changed hash means every record citing that document is affected: `graph search docs/architecture.pdf --in=evidences`.
 - Section or page locators are fragile when a document is edited. Re-read the cited section, and if sections were renumbered, update the locators.
 - If you add a version-like property to `DOCUMENT` nodes in the contract (contracts.md), update it during refresh.
@@ -200,7 +200,7 @@ Use this when you do not know how old the graph is, when commits are not recorde
 
 ## 9. Maintenance log and templates
 
-Keep a small append-only log, for example `maintenance/log.md` (or inside `batches/README.md`). One entry per refresh:
+Keep a small append-only log, for example `maintenance/log.md` (or inside `batches/PROGRESS.md`). One entry per refresh:
 
 ```text
 ## 2026-11-11  orders   abc1234 -> def5678
