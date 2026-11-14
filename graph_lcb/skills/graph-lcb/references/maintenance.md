@@ -111,7 +111,8 @@ Open each affected record's cited `source` at its locator **in the current file*
 | --- | --- | --- |
 | Still true, same place | Lines unchanged | Bump `commit` in that evidence (this counts as re-verified) |
 | Still true, moved | Same code, different lines | Update the locator and `commit` |
-| True but details changed | E.g. protocol, method, or target differs | Fix properties, description, and evidence; use a `replace` batch or `edit` |
+| True but details changed | E.g. protocol or method differs | Fix properties, description, and evidence, **keeping the same edge ID** (section 5, "Updating an existing edge") |
+| Endpoint changed | The edge now goes to a different source or target | Endpoints are immutable: delete the edge and create a new one |
 | No longer true | The call, route, or table access is gone | Delete the edge (or node), unless other evidence still supports it |
 | Cannot tell | Code was refactored beyond recognition | Re-map that area (mapping.md); do not guess |
 
@@ -134,7 +135,19 @@ A modified manifest or config can change relationships without touching the code
 
 ## 5. Applying fixes
 
+### Updating an existing edge: keep its ID
+
+An edge record in a batch that has no `id` is matched against existing edges by type + source + target + properties. If a property changed (for example `protocol` from `HTTP` to `gRPC`), the incoming record no longer matches, so `--on-conflict=replace` **creates a second edge and leaves the old one in place**. `graph validate` still passes, so only the dry-run counts reveal it.
+
+Rules:
+1. To update an edge, fetch its ID first: `graph edges --from=SRC --to=TGT --fields=id,type,description,properties,evidences`. Two nodes can have several edges between them (different types, or the same type with different properties), so check which one you are updating.
+2. Then either run `graph edit edge EDGE_ID ...`, or include `"id":"EDGE_ID"` in the batch record (a complete record, as always with `replace`).
+3. Never change `type`, `source`, or `target` of an existing edge ID. If the relationship now points somewhere else, delete the edge and create a new one.
+4. Read the dry-run summary: `updated` must equal the number of existing edges you meant to change. If `created` is higher than the number of genuinely new edges, some records did not match an existing edge. Stop and look for missing IDs before importing.
+
 ### Small number of records
+
+Use `edit` for up to about ten records: it keeps the edge ID and rejects duplicates. For more, or when the change should be reviewable in the ledger, write a batch (next section). Edits leave no batch file, so log them under "Deletions and manual edits" in `batches/PROGRESS.md` or in the maintenance log.
 ```sh
 graph edit node orders.api --evidences '[...complete new list...]'
 graph edit edge EDGE_UUID --description "..." --p.protocol=https
@@ -143,7 +156,7 @@ graph delete edge EDGE_UUID
 Remember: `--evidences` **replaces the whole list**, so read the current list first and send it back with your change. Get edge IDs with `--fields=id,...`.
 
 ### Many records
-Write a new numbered batch with **complete records** and import with `replace`:
+Write a new numbered batch with **complete records** and import with `replace`. Node records are matched by `id`. **Edge records must carry the existing edge `id`**, or a changed property creates a duplicate (see "Updating an existing edge"):
 ```sh
 graph import batches/0012-refresh-orders-abc1234.jsonl --on-conflict=replace --dry-run
 graph import batches/0012-refresh-orders-abc1234.jsonl --on-conflict=replace
@@ -235,6 +248,7 @@ Not verified / uncertain: <list>
 | Relying on search to find missing records | Search finds records citing a path, not things never mapped; re-inventory changed areas |
 | Diffing from a commit that is no longer reachable | Check with `merge-base --is-ancestor`; fall back to sampling or a re-map |
 | Updating evidence without sending the full list | `--evidences` replaces everything; read first, then write the complete list |
+| Refreshing an edge with a `replace` batch that has no `id` | A changed property no longer matches, so a duplicate edge is created; carry the existing edge `id` or use `edit edge` |
 | Deleting a node without checking its edges | Node deletion cascades; list its edges first |
 | Forgetting that replaying batches resurrects deleted records | Log every deletion |
 | Refreshing only one side of a cross-repo edge | Refresh all changed repositories; edges cite both sides |
@@ -252,6 +266,7 @@ Not verified / uncertain: <list>
 - [ ] Each affected record re-read at HEAD and given an outcome
 - [ ] Added and structural files inspected for new nodes and edges
 - [ ] Fixes applied through a new numbered batch (`replace`) or targeted `edit`/`delete`
+- [ ] Edge updates keep the existing edge ID; dry-run `created` counts only genuinely new records
 - [ ] Deletions logged
 - [ ] `validate` and `status` compared with the baseline
 - [ ] Last verified commit and maintenance log updated, then everything committed
