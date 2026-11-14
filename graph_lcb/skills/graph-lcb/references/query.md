@@ -138,7 +138,68 @@ graph status --check=orphans,no-evidence,no-description --limit=20
 - Use `--fields=id,description` when you want to understand nodes without evidences and metadata.
 - Open full records (`graph nodes ID`, `graph edges EDGE_ID`) only for the few items you will actually cite. Full records include evidences and metadata and are the most expensive output.
 
-## 7. Verifying before you answer
+## 7. Graph-guided investigation
+
+Use the graph as a navigation index when investigating a system. It helps narrow the source material to inspect; it does not replace source inspection or define the limits of an investigation.
+
+### Investigation workflow
+
+1. **Translate the question into graph concepts.** Identify likely entity types, names, properties, and relationship types. Run `graph contract --compact` if the vocabulary is unfamiliar.
+2. **Find an anchor.** Search for likely nodes by name or use `graph search` when the relevant information may be in descriptions, properties, or evidence. Confirm candidate IDs before traversal.
+3. **Explore the smallest useful neighborhood.** Start with filtered `nodes` or `edges`, then use `traverse` with an explicit direction, edge filter, depth, and limit. Use `path` when the question is specifically about how two known nodes connect.
+4. **Inspect the relevant records.** Open full node and edge records for the few results that matter. Read their descriptions, properties, and evidence. Do not assume a relationship's meaning from its type alone; use its description and supporting evidence.
+5. **Follow evidence into the original sources.** Open the cited files, documentation, or other source material. Confirm that the referenced code or configuration still supports the claim. Inspect nearby implementation or configuration when the evidence does not establish the full behavior.
+6. **Expand when the graph is incomplete.** Search the source directly for unresolved names, calls, routes, configuration keys, or event identifiers. The absence of a node or edge is not proof that the corresponding entity or relationship does not exist.
+7. **Separate established information from new findings.** In the answer, distinguish what was already represented in the graph, what you independently verified in source, and what remains inferred or unknown.
+8. **Propose graph updates when useful.** If the investigation discovers durable system knowledge that belongs in the graph, prepare records using the active contracts and the mapping workflow. Validate proposed changes before importing them.
+
+### Example: tracing an order flow
+
+Suppose the question is: "What happens when an order is created, and which systems are involved?"
+
+Start with the likely API node:
+
+```sh
+graph nodes --contains=order --fields=id,type,name --limit=20
+```
+
+After confirming its ID, inspect its outgoing dependencies:
+
+```sh
+graph edges --from=orders-api --fields=id,type,source,target,description
+graph traverse orders-api --direction=out --depth=2 --limit=30
+```
+
+Open the relevant full records to inspect their evidence:
+
+```sh
+graph nodes orders-api
+graph edges EDGE_UUID
+```
+
+Then inspect the cited source files. Follow important calls into their implementations and check configuration to establish destinations such as databases, queues, or external services. If the graph shows an event publication but does not identify the broker or topic, investigate the publisher implementation and configuration rather than guessing from a method name.
+
+The final explanation should state the verified flow and identify any unresolved parts. If you discover a missing service or relationship, prepare a JSONL batch and use the existing import workflow:
+
+```sh
+graph import findings.jsonl --dry-run
+graph import findings.jsonl
+graph validate
+```
+
+Only import findings that are sufficiently supported and fit the current contracts. Do not create speculative entities or edges merely to make the graph look complete.
+
+### Investigation rules
+
+- **The graph is a starting point, not an authority.** A graph can be incomplete, outdated, or wrong.
+- **Do not stop at the first missing edge.** Search source material when the question requires an answer the graph cannot provide.
+- **Do not expand indiscriminately.** Follow only relationships relevant to the question; increase depth gradually.
+- **Do not confuse structural reachability with runtime behavior.** A `CALLS` edge may show a code-level dependency, but does not by itself prove that a branch executes in production.
+- **Do not turn hypotheses into facts.** If a destination, protocol, or runtime condition is uncertain, investigate it or report the uncertainty.
+- **Do not mutate the graph just because you investigated something.** Update it when the finding is durable, relevant to the graph's intended scope, and supported by evidence.
+- **Use the mapping reference for substantial updates.** It covers scope, evidence collection, mapping passes, and quality checks. Use the batch-import reference for JSONL construction and import details.
+
+## 8. Verifying before you answer
 
 The graph is a map, not the territory. For anything consequential:
 
@@ -148,7 +209,7 @@ The graph is a map, not the territory. For anything consequential:
 4. In your answer, distinguish **what the graph says** from **what you verified in source**.
 5. If evidence is missing, say so. A relationship with no evidence is a lead, not a fact.
 
-## 8. Common mistakes
+## 9. Common mistakes
 
 | Mistake | Fix |
 | --- | --- |
